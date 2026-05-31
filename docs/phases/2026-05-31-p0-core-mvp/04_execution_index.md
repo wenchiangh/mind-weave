@@ -66,7 +66,7 @@ Status tags track current phase:
 
 ## WU-01 Core Contracts and Module Boundaries
 
-- [ ] Status: `planned`
+- [ ] Status: `plan-ready`
 - Plan: `work-units/01-core-contracts-and-module-boundaries.md`
 - Depends on: WU-00
 - Design refs:
