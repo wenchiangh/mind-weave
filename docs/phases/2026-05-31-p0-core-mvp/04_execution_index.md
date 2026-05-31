@@ -35,7 +35,7 @@ Status tags track current phase:
 
 ## WU-00 Project Skeleton and Tooling
 
-- [ ] Status: `plan-ready`
+- [x] Status: `passed`
 - Plan: `work-units/00-project-skeleton-and-tooling.md`
 - Depends on: none
 - Design refs:

@@ -14,6 +14,8 @@
 
 - Create: `package.json`
 - Create: `pnpm-lock.yaml`
+- Create: `pnpm-workspace.yaml`
+- Create: `.gitignore`
 - Create: `tsconfig.json`
 - Create: `vitest.config.ts`
 - Create: `src/app/runtime.ts`
@@ -40,10 +42,12 @@
 
 - Create: `package.json`
 - Create: `pnpm-lock.yaml`
+- Create: `pnpm-workspace.yaml`
+- Create: `.gitignore`
 - Create: `tsconfig.json`
 - Create: `vitest.config.ts`
 
-- [ ] **Step 1: Create `package.json`**
+- [x] **Step 1: Create `package.json`**
 
 Create:
 
@@ -65,7 +69,7 @@ Create:
 }
 ```
 
-- [ ] **Step 2: Pin latest pnpm with Corepack**
+- [x] **Step 2: Pin latest pnpm with Corepack**
 
 Run:
 
@@ -79,7 +83,7 @@ Expected:
 package.json is updated with a packageManager field for the resolved latest pnpm version
 ```
 
-- [ ] **Step 3: Create `tsconfig.json`**
+- [x] **Step 3: Create `tsconfig.json`**
 
 Create:
 
@@ -103,7 +107,7 @@ Create:
 }
 ```
 
-- [ ] **Step 4: Create `vitest.config.ts`**
+- [x] **Step 4: Create `vitest.config.ts`**
 
 Create:
 
@@ -118,7 +122,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 5: Add TypeScript 7 beta and latest development dependencies**
+- [x] **Step 5: Add TypeScript 7 beta and latest development dependencies**
 
 Run:
 
@@ -134,8 +138,19 @@ pnpm add exits with code 0
 
 `pnpm-lock.yaml` should be created.
 `package.json` should contain `devDependencies` with resolved current versions.
+If pnpm requires dependency build approval, `pnpm-workspace.yaml` should record the approved build dependency.
 
-- [ ] **Step 6: Run typecheck after tooling config exists**
+- [x] **Step 6: Create `.gitignore`**
+
+Create:
+
+```gitignore
+node_modules/
+dist/
+coverage/
+```
+
+- [x] **Step 7: Run typecheck after tooling config exists**
 
 Run:
 
@@ -159,7 +174,7 @@ The command exits with code 0. At this point `vitest.config.ts` is the only Type
 - Create: `src/app/runtime.test.ts`
 - Create: `src/index.ts`
 
-- [ ] **Step 1: Write runtime test**
+- [x] **Step 1: Write runtime test**
 
 Create `src/app/runtime.test.ts`:
 
@@ -177,7 +192,7 @@ describe("getRuntimeHealth", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -192,7 +207,7 @@ FAIL src/app/runtime.test.ts
 Cannot find module './runtime.js'
 ```
 
-- [ ] **Step 3: Implement runtime health function**
+- [x] **Step 3: Implement runtime health function**
 
 Create `src/app/runtime.ts`:
 
@@ -210,7 +225,7 @@ export function getRuntimeHealth(): RuntimeHealth {
 }
 ```
 
-- [ ] **Step 4: Add public package entry**
+- [x] **Step 4: Add public package entry**
 
 Create `src/index.ts`:
 
@@ -219,7 +234,7 @@ export { getRuntimeHealth } from "./app/runtime.js";
 export type { RuntimeHealth } from "./app/runtime.js";
 ```
 
-- [ ] **Step 5: Run runtime test**
+- [x] **Step 5: Run runtime test**
 
 Run:
 
@@ -240,7 +255,7 @@ PASS src/app/runtime.test.ts
 - Create: `src/interfaces/cli/main.ts`
 - Create: `src/interfaces/cli/main.test.ts`
 
-- [ ] **Step 1: Write CLI adapter tests**
+- [x] **Step 1: Write CLI adapter tests**
 
 Create `src/interfaces/cli/main.test.ts`:
 
@@ -275,7 +290,7 @@ describe("runCli", () => {
 });
 ```
 
-- [ ] **Step 2: Run CLI tests to verify they fail**
+- [x] **Step 2: Run CLI tests to verify they fail**
 
 Run:
 
@@ -290,7 +305,7 @@ FAIL src/interfaces/cli/main.test.ts
 Cannot find module './main.js'
 ```
 
-- [ ] **Step 3: Implement CLI adapter**
+- [x] **Step 3: Implement CLI adapter**
 
 Create `src/interfaces/cli/main.ts`:
 
@@ -323,7 +338,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 ```
 
-- [ ] **Step 4: Run CLI tests**
+- [x] **Step 4: Run CLI tests**
 
 Run:
 
@@ -337,7 +352,7 @@ Expected:
 PASS src/interfaces/cli/main.test.ts
 ```
 
-- [ ] **Step 5: Run CLI health command**
+- [x] **Step 5: Run CLI health command**
 
 Run:
 
@@ -357,7 +372,7 @@ Expected:
 
 - No new files.
 
-- [ ] **Step 1: Run typecheck**
+- [x] **Step 1: Run typecheck**
 
 Run:
 
@@ -373,7 +388,7 @@ tsgo --noEmit
 
 The command exits with code 0.
 
-- [ ] **Step 2: Run all tests**
+- [x] **Step 2: Run all tests**
 
 Run:
 
@@ -390,7 +405,7 @@ PASS src/interfaces/cli/main.test.ts
 
 The command exits with code 0.
 
-- [ ] **Step 3: Check git diff**
+- [x] **Step 3: Check git diff**
 
 Run:
 
@@ -403,6 +418,8 @@ Expected changed files include:
 ```text
 ?? package.json
 ?? pnpm-lock.yaml
+?? pnpm-workspace.yaml
+?? .gitignore
 ?? tsconfig.json
 ?? vitest.config.ts
 ?? src/app/runtime.ts
@@ -418,23 +435,19 @@ Expected changed files include:
 
 - Modify: `docs/phases/2026-05-31-p0-core-mvp/04_execution_index.md`
 
-- [ ] **Step 1: Mark WU-00 as testing during validation**
+- [x] **Step 1: Mark WU-00 as testing during validation**
 
 Change the WU-00 status line to:
 
-```markdown
-- [ ] Status: `testing`
-```
+`Status: testing`
 
-- [ ] **Step 2: After validation passes, mark WU-00 as passed**
+- [x] **Step 2: After validation passes, mark WU-00 as passed**
 
 Change the WU-00 status line to:
 
-```markdown
-- [x] Status: `passed`
-```
+`Status: passed`
 
-- [ ] **Step 3: Run final validation after status update**
+- [x] **Step 3: Run final validation after status update**
 
 Run:
 
@@ -450,12 +463,12 @@ typecheck exits with code 0
 test exits with code 0
 ```
 
-- [ ] **Step 4: Commit the work unit**
+- [x] **Step 4: Commit the work unit**
 
 Run:
 
 ```bash
-git add package.json pnpm-lock.yaml tsconfig.json vitest.config.ts src docs/phases/2026-05-31-p0-core-mvp/04_execution_index.md
+git add .gitignore package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json vitest.config.ts src docs/phases/2026-05-31-p0-core-mvp/04_execution_index.md docs/phases/2026-05-31-p0-core-mvp/work-units/00-project-skeleton-and-tooling.md
 git commit -m "chore: add project skeleton and tooling"
 ```
 
@@ -470,10 +483,17 @@ Commit succeeds with message: chore: add project skeleton and tooling
 If execution is interrupted:
 
 - If only `package.json`, `tsconfig.json`, and `vitest.config.ts` exist, resume at Task 1 Step 5.
+- If dependencies are installed but `.gitignore` does not exist, resume at Task 1 Step 6.
 - If runtime tests exist but `src/app/runtime.ts` does not, resume at Task 2 Step 2.
 - If CLI tests exist but `src/interfaces/cli/main.ts` does not, resume at Task 3 Step 2.
 - If all files exist but validation has not run, resume at Task 4.
 - If validation passed but no commit exists, resume at Task 5.
+
+## Execution Notes
+
+- `corepack use pnpm@latest` resolved pnpm to `pnpm@11.5.0`.
+- `pnpm add` required approving the `esbuild` build script. The approval is recorded in `pnpm-workspace.yaml`.
+- `pnpm cli health` required elevated execution in this sandbox because `tsx` creates an IPC pipe under the system temporary directory.
 
 ## Done Criteria
 
