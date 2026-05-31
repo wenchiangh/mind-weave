@@ -33,7 +33,7 @@ P0 includes:
 - In-memory index job queue.
 - Debounce and pending job coalescing.
 - Markdown chunking.
-- Content hash and chunk hash.
+- Document fingerprint and chunk content hash.
 - OpenAI-compatible embedding provider.
 - Batch embedding.
 - SQLite metadata store.
@@ -81,25 +81,25 @@ Document candidate
   -> enqueue job
   -> debounce/coalesce
   -> read current file content
-  -> compute content hash
-  -> skip unchanged documents
+  -> compare document fingerprint
+  -> skip unchanged documents when fingerprint matches
   -> produce chunks
-  -> compute chunk hashes
-  -> reuse cached embeddings
+  -> compute chunk content hashes
+  -> preserve embeddings for unchanged chunk occurrences
   -> embed missing chunks
   -> replace document chunks
   -> update vector index
 ```
 
-Jobs are in-memory. If the runtime exits, the next startup scan reconstructs work by comparing source state and stored hashes.
+Jobs are in-memory. If the runtime exits, the next startup scan reconstructs work by comparing source state and stored document state.
 
 ## Chunking Behavior
 
-Markdown chunking should be heading-aware.
+Markdown chunking should treat Markdown as structured natural-language text.
 
-The processor should preserve heading path, split oversized sections, and apply small overlap between adjacent chunks.
+The processor should include heading context directly in chunk text when available, split oversized sections, and apply small overlap within oversized sections.
 
-Returned chunk text should stay close to source content. Heading path should be returned as metadata and may be included in embedding input.
+Returned chunk text should stay close to source content. P0 does not require a separate heading path field.
 
 ## Embedding Behavior
 
@@ -107,7 +107,7 @@ P0 uses one active OpenAI-compatible embedding configuration.
 
 Configuration should include provider type, model, base URL, API key, and optional dimensions.
 
-Changing embedding model or chunking strategy invalidates existing vectors and should mark documents for reindex.
+Changing embedding model or chunking strategy invalidates existing vectors and should require restoring the previous config or resetting the index.
 
 ## Storage Behavior
 
@@ -121,8 +121,8 @@ Storage should persist:
 - Embedding records.
 - Vector rows.
 - Document status.
-- Schema version.
-- Index configuration version.
+- Schema marker.
+- Index configuration.
 
 Deleted documents and chunks can be soft deleted in P0. Query should exclude deleted rows by default.
 
@@ -148,12 +148,12 @@ P0 should expose at least:
 
 ```text
 search_knowledge
+list_sources
 ```
 
-Useful early additions:
+Deferred additions:
 
 ```text
-list_sources
 get_chunk
 ```
 
@@ -163,9 +163,9 @@ The MCP adapter should call QueryService. It should not implement retrieval logi
 
 P0 should provide eventual consistency with configured local sources.
 
-The system should combine startup scan, file watching, debounce, content hash, chunk hash, embedding cache, retry limits, and soft delete.
+The system should combine startup scan, file watching, debounce, document fingerprint, chunk content hash, chunk occurrence embedding preservation, retry limits, and soft delete.
 
-The expected user experience is stable enough for personal knowledge use: new, changed, and deleted Markdown files should eventually be reflected in search results, and repeated indexing should be avoided where hashes prove content is unchanged.
+The expected user experience is stable enough for personal knowledge use: new, changed, and deleted Markdown files should eventually be reflected in search results, unchanged documents should usually be skipped through fingerprint comparison, and unchanged chunk occurrences should preserve existing embeddings.
 
 ## Acceptance Criteria
 
@@ -174,7 +174,7 @@ P0 is successful when:
 - A user can configure one or more local Markdown source folders.
 - MindWeave can scan those folders and index Markdown files.
 - Markdown files are split into retrievable chunks.
-- Embeddings are stored and reused when chunk content is unchanged.
+- Embeddings are stored and preserved for unchanged chunk occurrences.
 - QueryService can retrieve relevant chunks with metadata.
 - MCP `search_knowledge` can be called by an agent.
 - File changes eventually update the index.

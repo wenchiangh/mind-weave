@@ -142,7 +142,7 @@ Responsibilities:
 - Merge pending jobs for the same document.
 - Debounce noisy file events.
 - Load document content.
-- Compute fingerprints and content hashes.
+- Compare document fingerprints.
 - Skip unchanged documents.
 - Call processors.
 - Call embedding providers.
@@ -157,12 +157,12 @@ The indexer should keep synchronization state centralized instead of spreading i
 
 The initial document processor is `MarkdownProcessor`.
 
-Markdown processing should be heading-aware:
+Markdown processing should treat Markdown as structured natural-language text:
 
 ```text
 Parse Markdown
   -> identify heading sections
-  -> attach heading path
+  -> include heading context in chunk text
   -> split oversized sections by length
   -> apply small overlap
   -> produce chunks
@@ -184,7 +184,7 @@ Provider configuration should include:
 - API key.
 - Optional dimensions.
 
-Embedding cache keys must include provider and model information. A chunk hash alone is not enough because vectors from different models cannot be mixed.
+Embeddings belong to chunk occurrences. Different chunk occurrences do not share embedding records, even if their text is identical.
 
 ### storage
 
@@ -273,9 +273,9 @@ Document identity should be stable within a source. A practical default is a has
 
 A Chunk is the retrieval unit.
 
-Chunks are produced from Documents and should include text, chunk hash, heading path, chunk index, document ID, source ID, and position metadata when available.
+Chunks are produced from Documents and should include text, chunk content hash, chunk index, document ID, source ID, and position metadata when available.
 
-Chunk identity should balance stability and simplicity. A practical first rule is to derive it from document identity, chunk index, and chunk hash.
+Chunk identity should balance stability and simplicity. A practical first rule is to derive it from document identity, chunk index, and chunk content hash.
 
 ### Embedding
 
@@ -283,13 +283,13 @@ An Embedding is the vector representation of text.
 
 Document chunk embeddings are persisted. Query embeddings are usually computed at query time.
 
-The embedding cache key should include provider, model, dimensions, and chunk hash.
+Each persisted embedding belongs to one chunk occurrence and should record provider, model, and dimensions.
 
 ### IndexJob
 
 An IndexJob represents a pending indexing operation.
 
-The current job model uses in-memory jobs. If the process exits or crashes, startup scan and hash diff should rebuild necessary work.
+The current job model uses in-memory jobs. If the process exits or crashes, startup scan and stored document state should rebuild necessary work.
 
 Job types may include upsert document, delete document, and reindex source.
 
@@ -297,7 +297,7 @@ Job types may include upsert document, delete document, and reindex source.
 
 A QueryResult is the protocol-neutral retrieval output.
 
-It should include chunk text, normalized score, chunk ID, document ID, source ID, source name, path or URI, heading path, source update time, index time, and additional metadata.
+It should include chunk text, normalized score, chunk ID, document ID, source ID, source name, path or URI, source update time, index time, and additional metadata.
 
 The score represents retrieval relevance, not factual correctness.
 
@@ -318,7 +318,7 @@ Ignore rules should start simple. A user-configurable regex exclude list is enou
 
 The system should reject or warn about nested sources because nested sources complicate identity, deletion, filtering, and duplicate indexing.
 
-Rename and move should be treated as delete plus add. If content is unchanged, embedding cache can still avoid unnecessary work.
+Rename and move should be treated as delete plus add. P0 does not try to preserve document identity across moves.
 
 ## Indexing Design
 
@@ -330,11 +330,11 @@ Scan result or source event
   -> debounce and coalesce
   -> check file existence
   -> read content
-  -> compute content hash
-  -> skip if unchanged
+  -> compare document fingerprint
+  -> skip if fingerprint is unchanged
   -> process Markdown
-  -> compute chunk hashes
-  -> reuse cached embeddings
+  -> compute chunk content hashes
+  -> preserve embeddings for unchanged chunk occurrences
   -> embed missing chunks
   -> replace document chunks
   -> update vectors
@@ -351,13 +351,13 @@ Transient failures should retry with a limit. Provider, network, and temporary s
 
 ## Markdown Chunking
 
-Markdown chunking should be heading-aware with a maximum size limit.
+Markdown chunking should use Markdown headings and paragraphs as natural-language boundaries with a maximum size limit.
 
-Headings define semantic sections. Heading path should be preserved as metadata and may be included in embedding input so retrieval can benefit from document structure.
+Headings define semantic sections. Heading context should be included directly in chunk text when available, so retrieval can benefit from document structure without requiring a separate heading field.
 
 Oversized sections should be split further by length. Adjacent chunks should use a small overlap, such as 10% to 15% or a fixed token range. Large overlaps should be avoided because they increase duplicate content and retrieval noise.
 
-Markdown frontmatter should be treated as document metadata when possible. Common fields such as title and tags can be extracted if implementation cost is low. Raw frontmatter does not need to become a normal content chunk.
+Raw Markdown frontmatter does not need to become normal content chunk text.
 
 ## Embedding Design
 
@@ -365,7 +365,7 @@ The initial embedding adapter should use an OpenAI-compatible embedding API.
 
 This covers cloud providers and many local or self-hosted services that expose compatible request formats.
 
-The system can start with one active embedding configuration at a time. Changing provider, model, dimensions, or chunking strategy should mark existing documents for reindex because old vectors are no longer compatible with the active index configuration.
+The system can start with one active embedding configuration at a time. Changing provider, model, dimensions, or chunking strategy should require restoring the previous config or resetting the index because old vectors are no longer compatible with the active index configuration.
 
 Batch embedding should be supported. A simple first strategy is configurable batch size, limited retry, and backoff on rate limits or transient provider errors.
 
@@ -381,9 +381,9 @@ This is a good fit for local-first personal knowledge:
 - Good enough for early personal knowledge scale.
 - Easy to inspect during development.
 
-Storage should track both schema version and index configuration version.
+Storage should track a minimal schema marker and index configuration.
 
-Schema version describes database structure. Index configuration version describes the embedding and chunking rules that produced current vectors.
+The schema marker describes database structure. Index configuration describes the embedding and chunking rules that produced current vectors.
 
 The initial deletion strategy can use soft delete for documents and chunks. Query should exclude deleted records by default. Later cleanup can hard delete old rows and compact the database.
 
@@ -416,16 +416,16 @@ The baseline tool is:
 
 ```text
 search_knowledge
+list_sources
 ```
 
-Useful early tools:
+Later useful tools:
 
 ```text
-list_sources
 get_chunk
 ```
 
-The exact schema belongs in detailed design, but tools should map directly to Core services.
+Tool schemas should map directly to Core services.
 
 ## Configuration Design
 
@@ -481,13 +481,12 @@ Reliability mechanisms:
 - File watching.
 - Debounce.
 - Pending job coalescing.
-- Content hash.
-- Chunk hash.
-- Embedding cache.
+- Document fingerprint.
+- Chunk content hash.
+- Chunk occurrence embedding preservation.
 - Limited retry.
 - Soft delete.
-- Schema version.
-- Index configuration version.
-- Optional scheduled scan.
+- Schema marker.
+- Index configuration.
 
 This design should provide a stable enough experience for personal knowledge and small team scenarios. The expected standard is not perfect real-time behavior, but a system that converges, avoids repeated expensive work, and makes failures visible.

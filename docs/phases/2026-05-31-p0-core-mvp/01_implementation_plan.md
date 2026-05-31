@@ -46,16 +46,16 @@ Implement document loading and Markdown chunking.
 Expected result:
 
 - Markdown content can be read by the indexer.
-- Content hash is computed.
-- Heading-aware chunks are produced.
-- Chunk hash and metadata are generated.
+- Markdown is split along natural-language structure.
+- Heading context is included in chunk text when available.
+- Chunk content hashes and metadata are generated.
 
 Implementation direction:
 
 - Put document loading in indexing or a focused loader helper.
 - Use a mature Markdown parsing or splitting library if it reduces complexity.
-- Preserve heading path.
-- Split oversized sections by length.
+- Use headings and paragraphs as semantic boundaries.
+- Split oversized sections by length and apply overlap only within oversized sections.
 - Keep chunk output independent from storage.
 
 ## Phase 4: SQLite Metadata Store
@@ -68,12 +68,12 @@ Expected result:
 - Documents can be upserted.
 - Chunks can be replaced by document.
 - Deleted documents can be soft deleted.
-- Schema version exists.
+- A minimal schema marker and index configuration record exist.
 
 Implementation direction:
 
 - Define storage interfaces before binding to SQLite details.
-- Keep schema migration minimal but present.
+- Do not build a migration framework yet; fail clearly on incompatible schema.
 - Store enough metadata to support query results and future UI status.
 
 ## Phase 5: Embeddings and Vector Index
@@ -83,14 +83,15 @@ Add OpenAI-compatible embedding and sqlite-vec.
 Expected result:
 
 - Chunks can be embedded in batches.
-- Embedding cache can avoid repeated work.
+- Embeddings are preserved for unchanged chunk occurrences.
 - Vectors can be stored.
-- Index configuration hash is recorded.
+- Active index configuration is recorded.
 
 Implementation direction:
 
 - Implement one OpenAI-compatible provider first.
-- Use provider, model, dimensions, and chunk hash for embedding cache identity.
+- Store provider, model, and dimensions with each persisted embedding.
+- Preserve an existing embedding only when document ID, chunk index, chunk content hash, provider, model, and dimensions match.
 - Keep batch size configurable.
 - Add limited retry and backoff for transient provider errors.
 
