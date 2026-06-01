@@ -17,6 +17,7 @@ export type {
 } from "./contracts.js";
 export { ConfigError, isConfigError } from "./errors.js";
 export type { ConfigErrorCode, ConfigErrorIssue } from "./errors.js";
+export { loadEffectiveConfigFile } from "./config.js";
 export { createEffectiveConfig } from "./effective.js";
 export { loadConfigFile, parseConfigText } from "./load.js";
 export { validateUserConfig } from "./validate.js";

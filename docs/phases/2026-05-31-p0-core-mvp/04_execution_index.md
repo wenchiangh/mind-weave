@@ -106,8 +106,10 @@ Status tags track current phase:
 - Validation summary:
   - `pnpm typecheck` passes.
   - `pnpm test` passes.
-  - `pnpm cli health` prints the stable runtime health JSON when run with the elevated permission required by `tsx` IPC in this sandbox.
+  - Config integration tests prove a real JSONC config file can be loaded into deterministic effective config without starting indexing.
+  - Config integration tests prove invalid config files return structured errors.
   - Unit tests cover valid config, missing fields, generated IDs, explicit IDs, nested source rejection, exclude regex validation, JSONC parsing, and config module boundary rules.
+  - `pnpm cli health` remains a regression check for the existing CLI stub, not the primary WU-02 acceptance test.
 - Completion criteria:
   - Config loading is UI-independent.
   - Runtime state is not written to user config.

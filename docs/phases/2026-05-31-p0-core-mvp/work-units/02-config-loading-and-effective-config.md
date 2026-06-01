@@ -92,8 +92,13 @@ Create config-owned files:
   - Re-exports the intended config module API.
   - Avoid exporting internal parser/schema details unless tests need them.
 
+- `src/config/config.ts`
+  - Owns the thin config-module pipeline from config file path to effective config.
+  - Should compose load, validate, and effective derivation without starting runtime services.
+
 Create tests near the config module:
 
+- `src/config/config.test.ts`
 - `src/config/load.test.ts`
 - `src/config/validate.test.ts`
 - `src/config/effective.test.ts`
@@ -423,7 +428,28 @@ Validation:
 - Existing CLI boundary test continues to pass.
 - `pnpm typecheck` and `pnpm test` pass.
 
-### Task 8: [x] Mark WU-02 Passed and Commit
+### Task 8: [x] Add Config Pipeline Acceptance Tests
+
+**Files:**
+
+- Create: `src/config/config.ts`
+- Create: `src/config/config.test.ts`
+- Modify: `src/config/index.ts`
+- Modify: `src/index.ts` if exposing the config pipeline is useful for current package surface.
+
+Plan:
+
+- Add a thin config-module API that loads a JSONC file, validates user config, and returns effective config.
+- Keep this API inside the config module. It must not start indexing, open storage, contact providers, or depend on CLI/runtime adapters.
+- Treat this as the primary observable WU-02 behavior.
+
+Validation:
+
+- A temporary JSONC config file with comments and trailing commas loads into deterministic effective config.
+- Relative source roots resolve from the config file directory.
+- Invalid config files return structured `ConfigError` values.
+
+### Task 9: [x] Mark WU-02 Passed and Commit
 
 **Files:**
 
@@ -441,7 +467,7 @@ Validation:
 
 - `pnpm typecheck` passes.
 - `pnpm test` passes.
-- `pnpm cli health` still prints the runtime health JSON.
+- `pnpm cli health` still prints the runtime health JSON as a regression check.
 - `git status --short` shows only expected files before commit and is clean after commit.
 
 ## Success Check
@@ -450,7 +476,9 @@ WU-02 is successful only if:
 
 - `pnpm typecheck` passes.
 - `pnpm test` passes.
-- `pnpm cli health` prints `{"name":"mind-weave-core","status":"ok"}`.
+- A real JSONC config file can be loaded into deterministic effective config through a config-module API.
+- Invalid config files return structured `ConfigError` values through the same config-module API.
+- `pnpm cli health` prints `{"name":"mind-weave-core","status":"ok"}` as a regression check for the existing CLI stub.
 - JSONC config loading accepts comments and trailing commas.
 - Invalid JSONC and invalid schema produce structured config errors.
 - Effective config preserves explicit source IDs.
@@ -470,7 +498,8 @@ If execution is interrupted:
 - If validation exists but effective config derivation is missing, resume at Task 5.
 - If effective config exists but nested source/regex checks are missing, resume at Task 6.
 - If implementation exists but exports/boundary checks are missing, resume at Task 7.
-- If validation passed but docs are not marked complete, resume at Task 8.
+- If config pipeline acceptance tests are missing, resume at Task 8.
+- If validation passed but docs are not marked complete, resume at Task 9.
 
 ## Plan Review Checklist
 

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const configSources = [
+  "config.ts",
   "contracts.ts",
   "effective.ts",
   "errors.ts",

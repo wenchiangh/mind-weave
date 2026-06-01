@@ -4,6 +4,7 @@ export {
   ConfigError,
   createEffectiveConfig,
   isConfigError,
+  loadEffectiveConfigFile,
   loadConfigFile,
   parseConfigText,
   validateUserConfig
