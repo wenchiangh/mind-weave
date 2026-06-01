@@ -1,5 +1,17 @@
 export { getRuntimeHealth } from "./app/runtime.js";
-export type { AppRuntime, RuntimeHealth } from "./app/contracts.js";
+export {
+  createRuntime,
+  createRuntimeFromConfigFile
+} from "./app/runtime.js";
+export { AppError, isAppError } from "./app/errors.js";
+export type {
+  AppErrorCode,
+  AppErrorIssue,
+  AppRuntime,
+  RuntimeCapability,
+  RuntimeHealth,
+  RuntimeStatus
+} from "./app/contracts.js";
 export {
   ConfigError,
   createEffectiveConfig,

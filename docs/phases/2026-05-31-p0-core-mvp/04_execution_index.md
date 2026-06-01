@@ -117,7 +117,7 @@ Status tags track current phase:
 
 ## WU-03 Runtime Composition and CLI Shell
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/03-runtime-composition-and-cli-shell.md`
 - Depends on: WU-02
 - Design refs:
@@ -130,7 +130,12 @@ Status tags track current phase:
 - Observable result:
   - CLI can load config and route commands through the app/runtime layer without owning core logic.
 - Validation summary:
-  - CLI tests verify command parsing and that adapter calls runtime services rather than concrete modules.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Runtime tests use a real JSONC config file to prove app/runtime composition.
+  - CLI tests verify `status --config <path>` reaches runtime-composed status.
+  - CLI tests verify `start`, `scan`, and `query` route through runtime and return structured capability-not-available errors until downstream services exist.
+  - CLI boundary tests prove the adapter does not import config or downstream concrete modules directly.
 - Completion criteria:
   - CLI remains a thin adapter.
   - Runtime lifecycle can start and stop with the currently available services.
