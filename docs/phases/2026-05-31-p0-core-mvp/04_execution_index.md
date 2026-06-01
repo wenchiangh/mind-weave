@@ -89,7 +89,7 @@ Status tags track current phase:
 
 ## WU-02 Config Loading and Effective Config
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/02-config-loading-and-effective-config.md`
 - Depends on: WU-01
 - Design refs:
@@ -104,7 +104,10 @@ Status tags track current phase:
 - Observable result:
   - Given a config file, Core can produce a deterministic effective config or a clear validation error without starting indexing.
 - Validation summary:
-  - Unit tests cover valid config, missing fields, generated IDs, explicit IDs, nested source rejection, and exclude regex validation.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - `pnpm cli health` prints the stable runtime health JSON when run with the elevated permission required by `tsx` IPC in this sandbox.
+  - Unit tests cover valid config, missing fields, generated IDs, explicit IDs, nested source rejection, exclude regex validation, JSONC parsing, and config module boundary rules.
 - Completion criteria:
   - Config loading is UI-independent.
   - Runtime state is not written to user config.
