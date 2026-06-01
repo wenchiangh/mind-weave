@@ -476,6 +476,13 @@ If execution is interrupted:
 - If app runtime is aligned but CLI boundary tests are missing, resume at Task 6.
 - If validation passed but docs are not marked complete, resume at Task 7.
 
+## Execution Notes
+
+- Contract files were created in module-owned directories.
+- Fake implementations live only in tests and do not create concrete runtime adapters.
+- `src/interfaces/cli/main.ts` remains a thin adapter over `src/app/runtime.ts`.
+- `pnpm cli health` required elevated execution in this sandbox because `tsx` creates an IPC pipe under the system temporary directory.
+
 ## Plan Review Checklist
 
 - [x] The plan defines module-owned contract responsibilities.

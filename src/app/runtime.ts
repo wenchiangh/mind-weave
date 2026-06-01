@@ -1,7 +1,4 @@
-export type RuntimeHealth = {
-  name: "mind-weave-core";
-  status: "ok";
-};
+import type { RuntimeHealth } from "./contracts.js";
 
 export function getRuntimeHealth(): RuntimeHealth {
   return {
