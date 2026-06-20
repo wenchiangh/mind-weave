@@ -143,7 +143,7 @@ Status tags track current phase:
 
 ## WU-04 Local FS Source Discovery
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/04-local-fs-source-discovery.md`
 - Depends on: WU-02
 - Design refs:
@@ -155,7 +155,11 @@ Status tags track current phase:
 - Observable result:
   - A configured local source folder can be scanned and returns deterministic document candidates with source ID, URI, relative path, file type, updated time, and size.
 - Validation summary:
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
   - Fixture directory integration tests cover `.md`, `.markdown`, hidden paths, ignored directories, non-Markdown files, exclude regex patterns, and symlink behavior.
+  - Source boundary tests prove the provider does not import config, app, CLI, storage, indexing, processors, embeddings, or query modules.
+  - CLI `scan --config <path>` remains a structured capability-not-available response until later runtime/indexing wiring exists.
 - Completion criteria:
   - SourceProvider responsibilities match detailed design.
   - Nested source rejection remains in config validation.

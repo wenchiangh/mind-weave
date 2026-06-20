@@ -30,3 +30,17 @@ export type {
   LocalFsSourceConfig,
   UserConfig
 } from "./config/index.js";
+export {
+  LocalFsSourceProvider,
+  SourceError,
+  isSourceError
+} from "./sources/index.js";
+export type {
+  SourceCandidate,
+  SourceDefinition,
+  SourceErrorCode,
+  SourceErrorIssue,
+  SourceId,
+  SourceProvider,
+  SourceScanResult
+} from "./sources/index.js";
