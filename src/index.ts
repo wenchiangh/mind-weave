@@ -59,3 +59,14 @@ export type {
   ChunkPreservationInput,
   DocumentFingerprint
 } from "./shared/identity.js";
+export {
+  MarkdownProcessor
+} from "./processors/index.js";
+export type {
+  DocumentId,
+  ChunkId,
+  DocumentProcessor,
+  MarkdownProcessorSettings,
+  ProcessableDocument,
+  ProcessedChunk
+} from "./processors/index.js";

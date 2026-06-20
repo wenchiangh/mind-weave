@@ -189,7 +189,7 @@ Status tags track current phase:
 
 ## WU-06 Markdown Processing
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/06-markdown-processing.md`
 - Depends on: WU-01, WU-05
 - Design refs:
@@ -202,7 +202,10 @@ Status tags track current phase:
 - Observable result:
   - A Markdown document can be converted into stable chunk objects whose text is suitable for embedding and direct query result return.
 - Validation summary:
-  - Tests cover heading sections, paragraphs, oversized sections, overlap within oversized sections, frontmatter handling, and deterministic output.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Tests cover heading sections, paragraphs, oversized sections, overlap within oversized sections, frontmatter handling, chunk identity, and deterministic output.
+  - Processor boundary tests prove Markdown processing does not import config, app, CLI, storage, indexing, embeddings, or query modules.
 - Completion criteria:
   - External splitter types do not leak outside the processor module.
   - Typecheck and tests pass.
