@@ -1,6 +1,6 @@
-import crypto from "node:crypto";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { createGeneratedSourceId } from "../shared/identity.js";
 import type {
   EffectiveConfig,
   EffectiveConfigOptions,
@@ -36,7 +36,7 @@ function createEffectiveLocalFsSource(
 ): EffectiveLocalFsSourceConfig {
   const rootPath = normalizeRootPath(source.rootPath, options.baseDir);
   const rootUri = pathToFileURL(rootPath).href;
-  const id = source.id ?? generateSourceId(rootPath);
+  const id = source.id ?? createGeneratedSourceId(rootPath);
   const name = source.name ?? (path.basename(rootPath) || id);
   const excludePatterns = source.exclude ?? [];
   const excludeRegexes = compileExcludeRegexes(excludePatterns);
@@ -69,11 +69,6 @@ function normalizeRootPath(rootPath: string, baseDir: string): string {
     : path.resolve(baseDir, rootPath);
 
   return path.normalize(resolvedPath);
-}
-
-function generateSourceId(rootPath: string): string {
-  const hash = crypto.createHash("sha256").update(rootPath).digest("hex");
-  return `source_${hash.slice(0, 16)}`;
 }
 
 function compileExcludeRegexes(patterns: readonly string[]): readonly RegExp[] {

@@ -167,7 +167,7 @@ Status tags track current phase:
 
 ## WU-05 Identity and Document Fingerprint
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/05-identity-and-document-fingerprint.md`
 - Depends on: WU-02, WU-04
 - Design refs:
@@ -179,7 +179,10 @@ Status tags track current phase:
 - Observable result:
   - Given stable source IDs, relative paths, file metadata, and chunk text, Core can produce deterministic IDs and fingerprints.
 - Validation summary:
-  - Unit tests cover path normalization, generated source IDs, document IDs, chunk IDs, same-document chunk hash comparison scope, and rename as delete plus add.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Unit tests cover path normalization, generated source IDs, document IDs, document fingerprints, chunk content hashes, chunk IDs, same-document chunk preservation scope, and rename as delete plus add.
+  - Config source ID generation uses the shared identity helper.
 - Completion criteria:
   - Identity helpers are reusable by config, source, processor, indexing, and storage modules.
   - Typecheck and tests pass.

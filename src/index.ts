@@ -44,3 +44,18 @@ export type {
   SourceProvider,
   SourceScanResult
 } from "./sources/index.js";
+export {
+  createChunkContentHash,
+  createChunkId,
+  createDocumentFingerprint,
+  createDocumentId,
+  createGeneratedSourceId,
+  documentFingerprintsEqual,
+  isSameChunkOccurrenceForPreservation,
+  normalizeChunkText,
+  normalizeRelativeDocumentPath
+} from "./shared/identity.js";
+export type {
+  ChunkPreservationInput,
+  DocumentFingerprint
+} from "./shared/identity.js";
