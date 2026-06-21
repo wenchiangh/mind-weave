@@ -7,7 +7,9 @@
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cli": "tsx src/interfaces/cli/main.ts"
+    "cli": "tsx src/interfaces/cli/main.ts",
+    "shell-bridge": "tsx src/interfaces/shell-bridge/server-main.ts",
+    "macos-shell:dev": "pnpm --dir apps/macos-shell dev"
   },
   "engines": {
     "node": ">=20"

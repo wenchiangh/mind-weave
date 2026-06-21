@@ -2,6 +2,12 @@
 
 This document is a lightweight direction note for the future macOS product shell. It is intentionally not a full spec yet.
 
+Superseded for MVP planning by:
+
+- `../p1-macos-menu-bar-shell/00_spec.md`
+- `../p1-macos-menu-bar-shell/01_mvp_scope.md`
+- `../p1-macos-menu-bar-shell/02_execution_index.md`
+
 The P1 shell should be designed after the P0 Core MVP proves the indexing and MCP retrieval loop.
 
 ## Purpose

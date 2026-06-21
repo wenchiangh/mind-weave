@@ -1,0 +1,20 @@
+{
+  "name": "@mind-weave/macos-shell",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "@tauri-apps/plugin-shell": "^2.3.3",
+    "vite": "^7.2.7"
+  }
+}

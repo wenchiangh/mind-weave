@@ -40,6 +40,9 @@ This directory separates stable project knowledge from phase-specific execution 
   - [Runtime SDK Surface Audit](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/04_runtime_sdk_surface_audit.md)
   - [Runtime SDK Boundary Plan](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/05_runtime_sdk_boundary_plan.md)
   - [Shell Bridge Transport Decision](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/06_bridge_transport_decision.md)
-- [P1 macOS Tauri Shell](./phases/p1-macos-tauri-shell/00_direction.md): future product shell direction, intentionally kept thin until Core MVP is validated.
+- [P1 macOS Menu Bar Shell](./phases/p1-macos-menu-bar-shell/00_spec.md): menu bar / tray-first local runtime shell for observing and controlling MindWeave.
+  - [MVP Scope](./phases/p1-macos-menu-bar-shell/01_mvp_scope.md)
+  - [Execution Index](./phases/p1-macos-menu-bar-shell/02_execution_index.md)
+- [P1 macOS Tauri Shell Direction](./phases/p1-macos-tauri-shell/00_direction.md): earlier direction note, superseded by the menu bar shell phase documents for MVP planning.
 
 Phase directories contain scope, implementation planning, and open questions for a specific stage. They are expected to evolve or be superseded as the project moves forward.

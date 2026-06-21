@@ -1,0 +1,98 @@
+:root {
+  color: #1f2328;
+  background: #f7f7f4;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+.panel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.status {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-available {
+  color: #17633a;
+}
+
+.status-unavailable {
+  color: #9a3412;
+}
+
+.detail {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+  color: #59636e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.row {
+  padding: 10px 0;
+  border-top: 1px solid #deded8;
+}
+
+.label {
+  margin: 0;
+  color: #59636e;
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.row .detail {
+  margin-top: 4px;
+  color: #1f2328;
+  font-size: 13px;
+}
+
+.status-not-ready .detail,
+.status-needs-attention .detail,
+.status-unavailable .detail {
+  color: #9a3412;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid #deded8;
+}
+
+button {
+  border: 1px solid #c9c9c2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2328;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 10px;
+}
+
+button:disabled {
+  color: #8c959f;
+}
+
+.action-feedback {
+  flex-basis: 100%;
+  margin: 0;
+  color: #59636e;
+  font-size: 12px;
+}

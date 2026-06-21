@@ -1,0 +1,16 @@
+[package]
+name = "mind-weave-macos-shell"
+version = "0.0.0"
+description = "MindWeave macOS menu bar shell"
+edition = "2021"
+
+[lib]
+name = "mind_weave_macos_shell"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"

@@ -2,3 +2,5 @@ node_modules/
 .pnpm-store/
 dist/
 coverage/
+target/
+src-tauri/gen/
