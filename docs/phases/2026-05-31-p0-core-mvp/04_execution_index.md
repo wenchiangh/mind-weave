@@ -283,7 +283,7 @@ Status tags track current phase:
 
 ## WU-10 Index Job Queue
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/10-index-job-queue.md`
 - Depends on: WU-01, WU-05
 - Design refs:
@@ -295,7 +295,10 @@ Status tags track current phase:
 - Observable result:
   - IndexingService can accept noisy document events and emit a deterministic job execution sequence.
 - Validation summary:
-  - Unit tests cover same-document upsert replacement, delete overriding upsert, later upsert replacing pending delete, running job follow-up, retry limit, and debounce timing with fake timers.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Unit tests cover same-document upsert replacement, delete overriding upsert, later upsert replacing pending delete, FIFO order for different documents, running job follow-up, retry limit, permanent failure behavior, drain behavior, and debounce timing with fake timers.
+  - Indexing boundary tests prove the queue does not import config, app, CLI, source provider implementation, processors, embeddings, storage, or query modules.
 - Completion criteria:
   - Queue behavior is independent from filesystem and storage.
   - Typecheck and tests pass.

@@ -106,3 +106,19 @@ export type {
   FakeEmbeddingProviderOptions,
   OpenAICompatibleEmbeddingProviderOptions
 } from "./embeddings/index.js";
+export {
+  InMemoryIndexJobQueue,
+  IndexQueueError,
+  createPermanentIndexError,
+  createRetryableIndexError
+} from "./indexing/index.js";
+export type {
+  InMemoryIndexJobQueueOptions,
+  IndexDocumentTarget,
+  IndexingService,
+  IndexJob,
+  IndexJobHandler,
+  IndexJobStatus,
+  IndexJobType,
+  IndexQueueErrorKind
+} from "./indexing/index.js";
