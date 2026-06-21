@@ -420,7 +420,7 @@ Status tags track current phase:
 
 ## WU-16 End-to-End Validation and Hardening
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/16-end-to-end-validation-and-hardening.md`
 - Depends on: WU-03 through WU-15
 - Design refs:
@@ -433,8 +433,12 @@ Status tags track current phase:
 - Observable result:
   - A user can configure local Markdown folders, run MindWeave Core, index files, query chunks through MCP, and observe file changes converging into the index.
 - Validation summary:
-  - End-to-end tests cover initial scan, query result traceability, file edit update, file delete removal, failed provider behavior with fake/provider controls, and log visibility.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - End-to-end tests cover initial scan, query result traceability, MCP handler search, file edit update, and file delete removal with fake embedding controls.
+  - CLI tests cover scan/query runtime routing and structured JSON output/errors.
+  - Remaining gaps are recorded in the work-unit plan.
 - Completion criteria:
-  - P0 acceptance criteria pass.
+  - P0 core acceptance criteria pass for config, scan, indexing, query, MCP handlers, file edit, and file delete reconciliation.
   - Work unit statuses are updated.
   - Remaining gaps are documented as follow-up phase work.

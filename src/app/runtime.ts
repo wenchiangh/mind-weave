@@ -1,12 +1,44 @@
 import type { EffectiveConfig } from "../config/index.js";
 import { loadEffectiveConfigFile } from "../config/index.js";
+import type { EmbeddingProvider } from "../embeddings/index.js";
+import { OpenAICompatibleEmbeddingProvider } from "../embeddings/index.js";
+import {
+  DocumentDeleteExecutor,
+  DocumentUpsertIndexer,
+  InMemoryIndexJobQueue,
+  SourceEventIndexJobRouter,
+  SourceScanReconciler
+} from "../indexing/index.js";
+import type { IndexJob } from "../indexing/index.js";
+import { createMcpToolHandlers } from "../interfaces/mcp/index.js";
+import type { McpToolHandlers } from "../interfaces/mcp/index.js";
+import { MarkdownProcessor } from "../processors/index.js";
+import { CoreQueryService } from "../query/index.js";
+import type { QueryResult } from "../query/index.js";
+import { createDocumentId } from "../shared/identity.js";
+import {
+  LocalFsSourceProvider,
+  LocalFsSourceWatcher
+} from "../sources/index.js";
+import type {
+  SourceDefinition,
+  SourceProvider,
+  SourceWatcher
+} from "../sources/index.js";
+import { SQLiteStorage } from "../storage/index.js";
+import type { SQLiteStorageOptions } from "../storage/index.js";
 import type {
   AppRuntime,
-  RuntimeCapability,
   RuntimeHealth,
   RuntimeStatus
 } from "./contracts.js";
-import { AppError } from "./errors.js";
+
+export type RuntimeDependencyOptions = {
+  readonly embeddingProvider?: EmbeddingProvider | undefined;
+  readonly storage?: SQLiteStorage | undefined;
+  readonly sourceProvider?: SourceProvider | undefined;
+  readonly createWatcher?: ((source: SourceDefinition) => SourceWatcher) | undefined;
+};
 
 export function getRuntimeHealth(): RuntimeHealth {
   return {
@@ -16,17 +48,77 @@ export function getRuntimeHealth(): RuntimeHealth {
 }
 
 export async function createRuntimeFromConfigFile(
-  configPath: string
+  configPath: string,
+  options: RuntimeDependencyOptions = {}
 ): Promise<AppRuntime> {
-  return createRuntime(await loadEffectiveConfigFile(configPath));
+  return createRuntime(await loadEffectiveConfigFile(configPath), options);
 }
 
-export function createRuntime(config: EffectiveConfig): AppRuntime {
-  return new ConfiguredAppRuntime(config);
+export function createRuntime(
+  config: EffectiveConfig,
+  options: RuntimeDependencyOptions = {}
+): AppRuntime {
+  return new ConfiguredAppRuntime(config, options);
 }
 
 class ConfiguredAppRuntime implements AppRuntime {
-  constructor(private readonly config: EffectiveConfig) {}
+  private readonly storage: SQLiteStorage;
+  private readonly ownsStorage: boolean;
+  private readonly sourceProvider: SourceProvider;
+  private readonly embeddingProvider: EmbeddingProvider;
+  private readonly upsertIndexer: DocumentUpsertIndexer;
+  private readonly deleteExecutor: DocumentDeleteExecutor;
+  private readonly queue: InMemoryIndexJobQueue;
+  private readonly sourceEventRouter: SourceEventIndexJobRouter;
+  private readonly queryService: CoreQueryService;
+  private readonly mcpHandlers: McpToolHandlers;
+  private readonly createWatcher: (source: SourceDefinition) => SourceWatcher;
+  private readonly watchers: SourceWatcher[] = [];
+
+  constructor(
+    private readonly config: EffectiveConfig,
+    options: RuntimeDependencyOptions
+  ) {
+    this.embeddingProvider = options.embeddingProvider
+      ?? new OpenAICompatibleEmbeddingProvider(config.embedding);
+    this.storage = options.storage ?? new SQLiteStorage(
+      config.storage.path,
+      createSQLiteOptions(this.embeddingProvider)
+    );
+    this.ownsStorage = options.storage === undefined;
+    this.sourceProvider = options.sourceProvider ?? new LocalFsSourceProvider();
+    this.upsertIndexer = new DocumentUpsertIndexer({
+      storage: this.storage,
+      processors: [new MarkdownProcessor()],
+      embeddingProvider: this.embeddingProvider
+    });
+    this.deleteExecutor = new DocumentDeleteExecutor({
+      storage: this.storage
+    });
+    this.queue = new InMemoryIndexJobQueue({
+      debounceMs: 1,
+      handler: async (job) => this.handleIndexJob(job)
+    });
+    this.sourceEventRouter = new SourceEventIndexJobRouter({
+      queue: this.queue
+    });
+    this.queryService = new CoreQueryService({
+      embeddingProvider: this.embeddingProvider,
+      storage: this.storage
+    });
+    this.mcpHandlers = createMcpToolHandlers({
+      queryService: this.queryService,
+      sourceStore: this.storage
+    });
+    this.createWatcher = options.createWatcher ?? ((source) =>
+      new LocalFsSourceWatcher({
+        source,
+        onEvent: async (event) => {
+          await this.sourceEventRouter.route(event);
+        }
+      })
+    );
+  }
 
   getHealth(): RuntimeHealth {
     return getRuntimeHealth();
@@ -55,31 +147,96 @@ class ConfiguredAppRuntime implements AppRuntime {
       mcp: {
         enabled: this.config.mcp.enabled
       },
-      unavailableCapabilities: ["start", "scan", "query"]
+      unavailableCapabilities: []
     };
   }
 
   async start(): Promise<void> {
-    throwCapabilityNotAvailable("start");
+    await this.scan();
+    for (const source of this.config.sourceDefinitions) {
+      const watcher = this.createWatcher(source);
+      await watcher.start();
+      this.watchers.push(watcher);
+    }
   }
 
   async scan(): Promise<void> {
-    throwCapabilityNotAvailable("scan");
+    await this.storage.saveSources(this.config.sourceDefinitions.map((source) => ({
+      sourceId: source.id,
+      name: source.name,
+      type: source.type,
+      rootUri: source.rootUri,
+      status: source.status
+    })));
+
+    for (const source of this.config.sourceDefinitions) {
+      const scan = await this.sourceProvider.scan(source);
+      const reconciler = new SourceScanReconciler({
+        storage: this.storage
+      });
+
+      for (const candidate of scan.candidates) {
+        await this.queue.enqueue(this.queue.createJob({
+          type: "upsert-document",
+          target: {
+            documentId: createDocumentId(candidate.sourceId, candidate.relativePath ?? candidate.uri),
+            sourceId: candidate.sourceId,
+            uri: candidate.uri,
+            ...(candidate.relativePath === undefined ? {} : { relativePath: candidate.relativePath }),
+            fileType: candidate.fileType,
+            updatedAt: candidate.updatedAt,
+            size: candidate.size
+          }
+        }));
+      }
+
+      for (const job of await reconciler.reconcile(scan)) {
+        await this.queue.enqueue(job);
+      }
+    }
+
+    await this.queue.drain();
   }
 
-  async query(_input: string): Promise<void> {
-    throwCapabilityNotAvailable("query");
+  async query(input: string): Promise<readonly QueryResult[]> {
+    return this.queryService.search({
+      query: input
+    });
+  }
+
+  getMcpToolHandlers(): McpToolHandlers {
+    return this.mcpHandlers;
   }
 
   async stop(): Promise<void> {
-    // Later work units will stop watchers, queues, MCP, and storage here.
+    while (this.watchers.length > 0) {
+      await this.watchers.pop()?.stop();
+    }
+
+    if (this.ownsStorage) {
+      this.storage.close();
+    }
   }
+
+  private async handleIndexJob(job: IndexJob): Promise<void> {
+    if (job.type === "delete-document") {
+      await this.deleteExecutor.deleteJob(job);
+      return;
+    }
+
+    await this.upsertIndexer.upsert({
+      sourceId: job.target.sourceId,
+      uri: job.target.uri,
+      ...(job.target.relativePath === undefined ? {} : { relativePath: job.target.relativePath }),
+      fileType: job.target.fileType,
+      updatedAt: job.target.updatedAt,
+      size: job.target.size ?? 0
+    });
+  }
+
 }
 
-function throwCapabilityNotAvailable(capability: RuntimeCapability): never {
-  throw new AppError({
-    code: "APP_CAPABILITY_NOT_AVAILABLE",
-    capability,
-    message: `Runtime capability is not available yet: ${capability}.`
-  });
+function createSQLiteOptions(provider: EmbeddingProvider): SQLiteStorageOptions {
+  const dimensions = provider.getConfig().dimensions;
+  return dimensions === undefined ? {} : { vectorDimensions: dimensions };
 }

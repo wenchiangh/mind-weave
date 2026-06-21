@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,6 +16,7 @@ async function writeConfigFile(): Promise<{
   const directory = await mkdtemp(path.join(os.tmpdir(), "mind-weave-runtime-"));
   const configPath = path.join(directory, "mind-weave.jsonc");
   const notesPath = path.join(directory, "notes");
+  await mkdir(notesPath, { recursive: true });
 
   await writeFile(configPath, `{
     "sources": [
@@ -93,30 +94,30 @@ describe("createRuntimeFromConfigFile", () => {
       mcp: {
         enabled: true
       },
-      unavailableCapabilities: ["start", "scan", "query"]
+      unavailableCapabilities: []
     });
   });
 
-  it("returns structured capability errors for unavailable runtime capabilities", async () => {
+  it("can scan an empty configured source", async () => {
     const { configPath } = await writeConfigFile();
     const runtime = await createRuntimeFromConfigFile(configPath);
 
-    for (const capability of ["start", "scan", "query"] as const) {
-      const error = await captureError(async () => {
-        if (capability === "query") {
-          await runtime.query("hello");
-          return;
-        }
+    await expect(runtime.scan()).resolves.toBeUndefined();
+    await runtime.stop();
+  });
 
-        await runtime[capability]();
-      });
+  it("surfaces embedding configuration errors for query", async () => {
+    const { configPath } = await writeConfigFile();
+    const runtime = await createRuntimeFromConfigFile(configPath);
 
-      expect(isAppError(error)).toBe(true);
-      if (isAppError(error)) {
-        expect(error.code).toBe("APP_CAPABILITY_NOT_AVAILABLE");
-        expect(error.capability).toBe(capability);
-      }
-    }
+    const error = await captureError(async () => runtime.query("hello"));
+
+    expect(isAppError(error)).toBe(false);
+    expect(error).toMatchObject({
+      name: "EmbeddingProviderError",
+      message: "Missing API key environment variable: OPENAI_API_KEY"
+    });
+    await runtime.stop();
   });
 
   it("can stop before downstream services exist", async () => {

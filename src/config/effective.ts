@@ -23,7 +23,10 @@ export function createEffectiveConfig(
     sources,
     sourceDefinitions: sources.map((source) => source.sourceDefinition),
     embedding: userConfig.embedding,
-    storage: userConfig.storage,
+    storage: {
+      ...userConfig.storage,
+      path: normalizeStoragePath(userConfig.storage.path, options.baseDir)
+    },
     mcp: {
       enabled: userConfig.mcp?.enabled ?? true
     }
@@ -67,6 +70,14 @@ function normalizeRootPath(rootPath: string, baseDir: string): string {
   const resolvedPath = path.isAbsolute(rootPath)
     ? rootPath
     : path.resolve(baseDir, rootPath);
+
+  return path.normalize(resolvedPath);
+}
+
+function normalizeStoragePath(storagePath: string, baseDir: string): string {
+  const resolvedPath = path.isAbsolute(storagePath)
+    ? storagePath
+    : path.resolve(baseDir, storagePath);
 
   return path.normalize(resolvedPath);
 }

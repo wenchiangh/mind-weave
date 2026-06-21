@@ -1,4 +1,6 @@
 import type { SourceDefinition } from "../sources/contracts.js";
+import type { QueryResult } from "../query/contracts.js";
+import type { McpToolHandlers } from "../interfaces/mcp/index.js";
 
 export type RuntimeHealth = {
   readonly name: "mind-weave-core";
@@ -50,6 +52,7 @@ export interface AppRuntime {
   getStatus(): RuntimeStatus;
   start(): Promise<void>;
   scan(): Promise<void>;
-  query(input: string): Promise<void>;
+  query(input: string): Promise<readonly QueryResult[]>;
+  getMcpToolHandlers(): McpToolHandlers;
   stop(): Promise<void>;
 }

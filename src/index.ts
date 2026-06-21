@@ -3,6 +3,9 @@ export {
   createRuntime,
   createRuntimeFromConfigFile
 } from "./app/runtime.js";
+export type {
+  RuntimeDependencyOptions
+} from "./app/runtime.js";
 export { AppError, isAppError } from "./app/errors.js";
 export type {
   AppErrorCode,

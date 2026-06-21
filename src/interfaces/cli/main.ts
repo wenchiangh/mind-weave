@@ -48,11 +48,12 @@ export async function runCli(args: string[], io: CliIO): Promise<number> {
 
     if (command.name === "scan") {
       await runtime.scan();
+      writeJson(io, { status: "scanned" });
       return 0;
     }
 
     if (command.name === "query") {
-      await runtime.query(command.query);
+      writeJson(io, { results: await runtime.query(command.query) });
       return 0;
     }
 

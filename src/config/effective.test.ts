@@ -56,6 +56,10 @@ describe("createEffectiveConfig", () => {
     });
     expect(source?.id).toMatch(/^source_[a-f0-9]{16}$/);
     expect(effective.mcp).toEqual({ enabled: true });
+    expect(effective.storage).toEqual({
+      type: "sqlite",
+      path: path.join(baseDir, "mind-weave.sqlite")
+    });
     expect(effective.sourceDefinitions).toEqual([
       source?.sourceDefinition
     ]);

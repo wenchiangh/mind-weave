@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -13,6 +13,7 @@ async function writeConfigFile(): Promise<{
   const directory = await mkdtemp(path.join(os.tmpdir(), "mind-weave-cli-"));
   const configPath = path.join(directory, "mind-weave.jsonc");
   const notesPath = path.join(directory, "notes");
+  await mkdir(notesPath, { recursive: true });
 
   await writeFile(configPath, `{
     "sources": [
@@ -118,26 +119,30 @@ describe("runCli", () => {
       mcp: {
         enabled: false
       },
-      unavailableCapabilities: ["start", "scan", "query"]
+      unavailableCapabilities: []
     });
   });
 
-  it("routes unavailable commands through runtime and returns structured errors", async () => {
+  it("routes scan through runtime and prints a structured success payload", async () => {
     const { configPath } = await writeConfigFile();
 
-    for (const args of [
-      ["start", "--config", configPath],
-      ["scan", "--config", configPath],
-      ["query", "--config", configPath, "hello"]
-    ]) {
-      const result = await runCliWithWrites(args);
-      const payload = JSON.parse(result.writes[0] ?? "");
+    const result = await runCliWithWrites(["scan", "--config", configPath]);
 
-      expect(result.exitCode).toBe(1);
-      expect(payload.code).toBe("APP_CAPABILITY_NOT_AVAILABLE");
-      expect(["start", "scan", "query"]).toContain(payload.capability);
-      expect(payload.issues).toHaveLength(1);
-    }
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.writes[0] ?? "")).toEqual({
+      status: "scanned"
+    });
+  });
+
+  it("routes query through runtime and returns structured provider errors", async () => {
+    const { configPath } = await writeConfigFile();
+
+    const result = await runCliWithWrites(["query", "--config", configPath, "hello"]);
+    const payload = JSON.parse(result.writes[0] ?? "");
+
+    expect(result.exitCode).toBe(1);
+    expect(payload.code).toBe("CLI_UNKNOWN_ERROR");
+    expect(payload.message).toBe("Missing API key environment variable: OPENAI_API_KEY");
   });
 
   it("keeps the CLI adapter from importing lower-level core modules directly", () => {
