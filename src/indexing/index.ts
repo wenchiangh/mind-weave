@@ -16,3 +16,11 @@ export type {
   IndexJobHandler,
   IndexQueueErrorKind
 } from "./queue.js";
+export {
+  DocumentUpsertIndexer
+} from "./upsert.js";
+export type {
+  DocumentUpsertIndexerOptions,
+  DocumentUpsertResult,
+  DocumentUpsertStorage
+} from "./upsert.js";

@@ -305,7 +305,7 @@ Status tags track current phase:
 
 ## WU-11 Indexing Document Upsert Flow
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/11-indexing-document-upsert-flow.md`
 - Depends on: WU-04, WU-06, WU-07, WU-08, WU-09, WU-10
 - Design refs:
@@ -319,7 +319,10 @@ Status tags track current phase:
 - Observable result:
   - A Markdown file candidate can be indexed into SQLite/sqlite-vec, re-indexing unchanged files skips work, and changing one section only embeds changed chunk occurrences.
 - Validation summary:
-  - Integration tests with FakeEmbeddingProvider cover first index, unchanged skip, partial document change, stale-on-update-failure, and transaction safety for replacement.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Integration tests with FakeEmbeddingProvider cover first index, unchanged skip, partial document change, stale-on-update-failure, and failed first index.
+  - Storage tests cover vector row preservation for unchanged replacement embeddings.
 - Completion criteria:
   - Upsert flow writes through storage domain operations.
   - Typecheck and tests pass.

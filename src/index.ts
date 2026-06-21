@@ -85,6 +85,7 @@ export type {
   StorageErrorCode,
   StorageErrorIssue,
   StoredChunk,
+  StoredChunkWithEmbedding,
   StoredDocument,
   StoredEmbedding,
   StoredEmbeddingVector,
@@ -107,12 +108,16 @@ export type {
   OpenAICompatibleEmbeddingProviderOptions
 } from "./embeddings/index.js";
 export {
+  DocumentUpsertIndexer,
   InMemoryIndexJobQueue,
   IndexQueueError,
   createPermanentIndexError,
   createRetryableIndexError
 } from "./indexing/index.js";
 export type {
+  DocumentUpsertIndexerOptions,
+  DocumentUpsertResult,
+  DocumentUpsertStorage,
   InMemoryIndexJobQueueOptions,
   IndexDocumentTarget,
   IndexingService,

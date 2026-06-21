@@ -54,6 +54,11 @@ export type StoredEmbeddingVector = {
   readonly vector: Vector;
 };
 
+export type StoredChunkWithEmbedding = {
+  readonly chunk: StoredChunk;
+  readonly embedding?: StoredEmbedding | undefined;
+};
+
 export type VectorSearchInput = {
   readonly vector: Vector;
   readonly limit: number;
@@ -86,6 +91,7 @@ export interface ChunkEmbeddingStore {
     chunks: readonly StoredChunk[],
     embeddings: readonly StoredEmbedding[]
   ): Promise<void>;
+  listDocumentChunks(documentId: EntityId): Promise<readonly StoredChunkWithEmbedding[]>;
 }
 
 export interface EmbeddingVectorStore {

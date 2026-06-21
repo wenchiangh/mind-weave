@@ -329,6 +329,64 @@ describe("SQLiteStorage", () => {
     storage.close();
   });
 
+  it("preserves vector rows for unchanged replacement embeddings", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath(), {
+      vectorDimensions: 3
+    });
+    await storage.upsertDocument(createDocument("doc_a"));
+
+    const unchangedChunk = createChunk(0);
+    const changedChunk = createChunk(1);
+    const preservedEmbedding = createEmbedding(unchangedChunk.chunkId, 0);
+    const replacedEmbedding = createEmbedding(changedChunk.chunkId, 1);
+
+    await storage.replaceDocumentChunks("doc_a", [
+      unchangedChunk,
+      changedChunk
+    ], [
+      preservedEmbedding,
+      replacedEmbedding
+    ]);
+    await storage.replaceEmbeddingVectors([
+      { embeddingId: preservedEmbedding.embeddingId, vector: [1, 0, 0] },
+      { embeddingId: replacedEmbedding.embeddingId, vector: [0, 1, 0] }
+    ]);
+
+    const replacementChunk = createChunk(2);
+    const newEmbedding = createEmbedding(replacementChunk.chunkId, 2);
+    await storage.replaceDocumentChunks("doc_a", [
+      unchangedChunk,
+      replacementChunk
+    ], [
+      preservedEmbedding,
+      newEmbedding
+    ]);
+
+    expect(storage.countRows("chunks")).toBe(2);
+    expect(storage.countRows("embeddings")).toBe(2);
+    expect(storage.countRows("vec_embeddings")).toBe(1);
+    await expect(storage.listDocumentChunks("doc_a")).resolves.toMatchObject([
+      {
+        chunk: {
+          chunkId: unchangedChunk.chunkId
+        },
+        embedding: {
+          embeddingId: preservedEmbedding.embeddingId
+        }
+      },
+      {
+        chunk: {
+          chunkId: replacementChunk.chunkId
+        },
+        embedding: {
+          embeddingId: newEmbedding.embeddingId
+        }
+      }
+    ]);
+
+    storage.close();
+  });
+
   it("persists index config metadata", async () => {
     const storage = new SQLiteStorage(await createDatabasePath());
 

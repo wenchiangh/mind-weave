@@ -8,6 +8,7 @@ export type {
   StoredDocument,
   StoredEmbedding,
   StoredEmbeddingVector,
+  StoredChunkWithEmbedding,
   StoredSource,
   VectorSearchInput,
   VectorSearchResult,

@@ -9,6 +9,7 @@ import type {
   IndexConfigStore,
   SourceStatusStore,
   StoredChunk,
+  StoredChunkWithEmbedding,
   StoredDocument,
   StoredEmbedding,
   StoredEmbeddingVector,
@@ -53,6 +54,20 @@ type DocumentRow = {
   readonly deleted_at: number | null;
   readonly last_error: string | null;
   readonly metadata_json: string | null;
+};
+
+type ChunkEmbeddingRow = {
+  readonly chunk_id: string;
+  readonly document_id: string;
+  readonly source_id: string;
+  readonly chunk_index: number;
+  readonly text: string;
+  readonly content_hash: string;
+  readonly chunk_metadata_json: string | null;
+  readonly embedding_id: string | null;
+  readonly provider: string | null;
+  readonly model: string | null;
+  readonly dimensions: number | null;
 };
 
 export class SQLiteStorage implements
@@ -209,22 +224,44 @@ export class SQLiteStorage implements
     embeddings: readonly StoredEmbedding[]
   ): Promise<void> {
     const replace = this.db.transaction(() => {
-      this.db.prepare(`
-        DELETE FROM vec_embeddings
-        WHERE embedding_id IN (
-          SELECT embedding_id FROM embeddings
-          WHERE chunk_id IN (
-            SELECT chunk_id FROM chunks WHERE document_id = ?
-          )
-        )
-      `).run(documentId);
-      this.db.prepare(`
-        DELETE FROM embeddings
+      const newEmbeddingIds = new Set(embeddings.map((embedding) => embedding.embeddingId));
+      const oldEmbeddingRows = this.db.prepare(`
+        SELECT embedding_id AS value
+        FROM embeddings
         WHERE chunk_id IN (
           SELECT chunk_id FROM chunks WHERE document_id = ?
         )
-      `).run(documentId);
-      this.db.prepare("DELETE FROM chunks WHERE document_id = ?").run(documentId);
+      `).all(documentId) as JsonRow[];
+      const removedEmbeddingIds = oldEmbeddingRows
+        .map((row) => row.value)
+        .filter((embeddingId) => !newEmbeddingIds.has(embeddingId));
+
+      const deleteVector = this.db.prepare(`
+        DELETE FROM vec_embeddings WHERE embedding_id = ?
+      `);
+      for (const embeddingId of removedEmbeddingIds) {
+        deleteVector.run(embeddingId);
+      }
+
+      if (removedEmbeddingIds.length > 0) {
+        this.db.prepare(`
+          DELETE FROM embeddings
+          WHERE embedding_id IN (${removedEmbeddingIds.map(() => "?").join(", ")})
+        `).run(...removedEmbeddingIds);
+      }
+
+      if (chunks.length === 0) {
+        this.db.prepare(`
+          DELETE FROM chunks
+          WHERE document_id = ?
+        `).run(documentId);
+      } else {
+        this.db.prepare(`
+          DELETE FROM chunks
+          WHERE document_id = ?
+            AND chunk_id NOT IN (${chunks.map(() => "?").join(", ")})
+        `).run(documentId, ...chunks.map((chunk) => chunk.chunkId));
+      }
 
       const insertChunk = this.db.prepare(`
         INSERT INTO chunks (
@@ -232,6 +269,13 @@ export class SQLiteStorage implements
         ) VALUES (
           @chunkId, @documentId, @sourceId, @index, @text, @contentHash, @metadataJson
         )
+        ON CONFLICT(chunk_id) DO UPDATE SET
+          document_id = excluded.document_id,
+          source_id = excluded.source_id,
+          chunk_index = excluded.chunk_index,
+          text = excluded.text,
+          content_hash = excluded.content_hash,
+          metadata_json = excluded.metadata_json
       `);
       for (const chunk of chunks) {
         insertChunk.run({
@@ -251,6 +295,11 @@ export class SQLiteStorage implements
         ) VALUES (
           @embeddingId, @chunkId, @provider, @model, @dimensions
         )
+        ON CONFLICT(embedding_id) DO UPDATE SET
+          chunk_id = excluded.chunk_id,
+          provider = excluded.provider,
+          model = excluded.model,
+          dimensions = excluded.dimensions
       `);
       for (const embedding of embeddings) {
         insertEmbedding.run({
@@ -264,6 +313,31 @@ export class SQLiteStorage implements
     });
 
     replace();
+  }
+
+  async listDocumentChunks(
+    documentId: string
+  ): Promise<readonly StoredChunkWithEmbedding[]> {
+    const rows = this.db.prepare(`
+      SELECT
+        chunks.chunk_id,
+        chunks.document_id,
+        chunks.source_id,
+        chunks.chunk_index,
+        chunks.text,
+        chunks.content_hash,
+        chunks.metadata_json AS chunk_metadata_json,
+        embeddings.embedding_id,
+        embeddings.provider,
+        embeddings.model,
+        embeddings.dimensions
+      FROM chunks
+      LEFT JOIN embeddings ON embeddings.chunk_id = chunks.chunk_id
+      WHERE chunks.document_id = ?
+      ORDER BY chunks.chunk_index
+    `).all(documentId) as ChunkEmbeddingRow[];
+
+    return rows.map(mapChunkEmbeddingRow);
   }
 
   async replaceEmbeddingVectors(
@@ -534,6 +608,35 @@ function mapDocumentRow(row: DocumentRow): StoredDocument {
     ...(row.deleted_at === null ? {} : { deletedAt: row.deleted_at }),
     ...(row.last_error === null ? {} : { lastError: row.last_error }),
     ...(row.metadata_json === null ? {} : { metadata: parseMetadata(row.metadata_json) })
+  };
+}
+
+function mapChunkEmbeddingRow(row: ChunkEmbeddingRow): StoredChunkWithEmbedding {
+  return {
+    chunk: {
+      chunkId: row.chunk_id,
+      documentId: row.document_id,
+      sourceId: row.source_id,
+      index: row.chunk_index,
+      text: row.text,
+      contentHash: row.content_hash,
+      ...(row.chunk_metadata_json === null ? {} : {
+        metadata: parseMetadata(row.chunk_metadata_json)
+      })
+    },
+    ...(row.embedding_id === null
+      || row.provider === null
+      || row.model === null
+      ? {}
+      : {
+        embedding: {
+          embeddingId: row.embedding_id,
+          chunkId: row.chunk_id,
+          provider: row.provider,
+          model: row.model,
+          ...(row.dimensions === null ? {} : { dimensions: row.dimensions })
+        }
+      })
   };
 }
 

@@ -39,7 +39,8 @@ describe("storage capability contracts", () => {
     };
 
     const chunks: ChunkEmbeddingStore = {
-      replaceDocumentChunks: async () => undefined
+      replaceDocumentChunks: async () => undefined,
+      listDocumentChunks: async () => []
     };
     const vectors: VectorSearchStore = {
       searchVectors: async () => [{ chunkId: "chunk-1", distance: 0.1, score: 0.9 }]
@@ -52,6 +53,7 @@ describe("storage capability contracts", () => {
     await expect(sources.listSources()).resolves.toHaveLength(1);
     await expect(documents.listActiveDocuments("source-1")).resolves.toHaveLength(1);
     await expect(chunks.replaceDocumentChunks("doc-1", [], [])).resolves.toBeUndefined();
+    await expect(chunks.listDocumentChunks("doc-1")).resolves.toEqual([]);
     await expect(vectors.searchVectors({ vector: [1, 0, 0], limit: 1 })).resolves.toEqual([
       { chunkId: "chunk-1", distance: 0.1, score: 0.9 }
     ]);
