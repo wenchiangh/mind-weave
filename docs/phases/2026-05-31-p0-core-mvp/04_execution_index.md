@@ -204,6 +204,7 @@ Status tags track current phase:
 - Validation summary:
   - `pnpm typecheck` passes.
   - `pnpm test` passes.
+  - Processor acceptance test proves a realistic Markdown document becomes storage-ready chunks with document/source traceability, index, text, content hash, and chunk ID.
   - Tests cover heading sections, paragraphs, oversized sections, overlap within oversized sections, frontmatter handling, chunk identity, and deterministic output.
   - Processor boundary tests prove Markdown processing does not import config, app, CLI, storage, indexing, embeddings, or query modules.
 - Completion criteria:

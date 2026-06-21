@@ -18,6 +18,58 @@ function createDocument(content: string, fileType = "markdown"): ProcessableDocu
 }
 
 describe("MarkdownProcessor", () => {
+  it("acceptance: converts a realistic Markdown document into storage-ready chunks", async () => {
+    const document = createDocument(`---
+title: Architecture Notes
+---
+
+Overview before headings.
+
+# Product Boundary
+
+MindWeave connects local knowledge to agents.
+
+## Runtime
+
+Core stays independent from CLI, MCP, and Tauri.
+
+## Storage
+
+Chunks are stored with document and source traceability.`);
+
+    const chunks = await new MarkdownProcessor().process(document);
+
+    expect(chunks).toHaveLength(4);
+    expect(chunks.map((chunk) => ({
+      documentId: chunk.documentId,
+      sourceId: chunk.sourceId,
+      index: chunk.index,
+      text: chunk.text,
+      contentHash: chunk.contentHash,
+      chunkId: chunk.chunkId
+    }))).toEqual(chunks.map((chunk, index) => {
+      const contentHash = createChunkContentHash(chunk.text);
+      return {
+        documentId: "doc_notes",
+        sourceId: "source_notes",
+        index,
+        text: chunk.text,
+        contentHash,
+        chunkId: createChunkId({
+          documentId: "doc_notes",
+          chunkIndex: index,
+          chunkContentHash: contentHash
+        })
+      };
+    }));
+    expect(chunks.map((chunk) => chunk.text)).toEqual([
+      "Overview before headings.",
+      "# Product Boundary\n\nMindWeave connects local knowledge to agents.",
+      "# Product Boundary\n\n## Runtime\n\nCore stays independent from CLI, MCP, and Tauri.",
+      "# Product Boundary\n\n## Storage\n\nChunks are stored with document and source traceability."
+    ]);
+  });
+
   it("supports markdown files only", () => {
     const processor = new MarkdownProcessor();
 
