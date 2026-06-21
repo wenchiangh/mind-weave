@@ -376,7 +376,7 @@ Status tags track current phase:
 
 ## WU-14 MCP Search and Source Tools
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/14-mcp-search-and-source-tools.md`
 - Depends on: WU-13
 - Design refs:
@@ -388,6 +388,8 @@ Status tags track current phase:
 - Observable result:
   - An MCP client can call `search_knowledge` and receive full chunk text, normalized score, source/document metadata, and empty results for successful no-match queries.
 - Validation summary:
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
   - Adapter tests cover input schema, output schema, include/exclude source behavior, empty result behavior, tool error behavior, and `list_sources` output.
 - Completion criteria:
   - MCP adapter does not access SQLite directly except through approved storage read service boundaries.
