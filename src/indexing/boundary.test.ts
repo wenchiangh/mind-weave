@@ -5,6 +5,7 @@ const indexingFiles = [
   "contracts.ts",
   "index.ts",
   "queue.ts",
+  "reconcile.ts",
   "upsert.ts"
 ];
 

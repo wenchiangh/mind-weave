@@ -108,13 +108,16 @@ export type {
   OpenAICompatibleEmbeddingProviderOptions
 } from "./embeddings/index.js";
 export {
+  DocumentDeleteExecutor,
   DocumentUpsertIndexer,
   InMemoryIndexJobQueue,
   IndexQueueError,
+  SourceScanReconciler,
   createPermanentIndexError,
   createRetryableIndexError
 } from "./indexing/index.js";
 export type {
+  DocumentDeleteExecutorOptions,
   DocumentUpsertIndexerOptions,
   DocumentUpsertResult,
   DocumentUpsertStorage,
@@ -125,5 +128,6 @@ export type {
   IndexJobHandler,
   IndexJobStatus,
   IndexJobType,
-  IndexQueueErrorKind
+  IndexQueueErrorKind,
+  SourceScanReconcilerOptions
 } from "./indexing/index.js";

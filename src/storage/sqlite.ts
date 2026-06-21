@@ -20,7 +20,7 @@ import type {
 } from "./contracts.js";
 import { StorageError } from "./errors.js";
 
-const schemaVersion = 2;
+const schemaVersion = 3;
 const defaultVectorDimensions = 1536;
 
 export type SQLiteStorageOptions = {
@@ -211,11 +211,20 @@ export class SQLiteStorage implements
     documentId: string,
     deletedAt: number
   ): Promise<void> {
-    this.db.prepare(`
-      UPDATE documents
-      SET status = 'deleted', deleted_at = ?
-      WHERE document_id = ?
-    `).run(deletedAt, documentId);
+    const markDeleted = this.db.transaction(() => {
+      this.db.prepare(`
+        UPDATE documents
+        SET status = 'deleted', deleted_at = ?
+        WHERE document_id = ?
+      `).run(deletedAt, documentId);
+      this.db.prepare(`
+        UPDATE chunks
+        SET deleted_at = ?
+        WHERE document_id = ?
+      `).run(deletedAt, documentId);
+    });
+
+    markDeleted();
   }
 
   async replaceDocumentChunks(
@@ -265,9 +274,23 @@ export class SQLiteStorage implements
 
       const insertChunk = this.db.prepare(`
         INSERT INTO chunks (
-          chunk_id, document_id, source_id, chunk_index, text, content_hash, metadata_json
+          chunk_id,
+          document_id,
+          source_id,
+          chunk_index,
+          text,
+          content_hash,
+          metadata_json,
+          deleted_at
         ) VALUES (
-          @chunkId, @documentId, @sourceId, @index, @text, @contentHash, @metadataJson
+          @chunkId,
+          @documentId,
+          @sourceId,
+          @index,
+          @text,
+          @contentHash,
+          @metadataJson,
+          NULL
         )
         ON CONFLICT(chunk_id) DO UPDATE SET
           document_id = excluded.document_id,
@@ -275,7 +298,8 @@ export class SQLiteStorage implements
           chunk_index = excluded.chunk_index,
           text = excluded.text,
           content_hash = excluded.content_hash,
-          metadata_json = excluded.metadata_json
+          metadata_json = excluded.metadata_json,
+          deleted_at = NULL
       `);
       for (const chunk of chunks) {
         insertChunk.run({
@@ -334,6 +358,7 @@ export class SQLiteStorage implements
       FROM chunks
       LEFT JOIN embeddings ON embeddings.chunk_id = chunks.chunk_id
       WHERE chunks.document_id = ?
+        AND chunks.deleted_at IS NULL
       ORDER BY chunks.chunk_index
     `).all(documentId) as ChunkEmbeddingRow[];
 
@@ -386,6 +411,7 @@ export class SQLiteStorage implements
     };
     const conditions = [
       "documents.status IN ('indexed', 'stale')",
+      "chunks.deleted_at IS NULL",
       "sources.status != 'disabled'"
     ];
 
@@ -529,6 +555,7 @@ export class SQLiteStorage implements
         text TEXT NOT NULL,
         content_hash TEXT NOT NULL,
         metadata_json TEXT,
+        deleted_at REAL,
         UNIQUE(document_id, chunk_index)
       );
 

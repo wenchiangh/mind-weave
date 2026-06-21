@@ -17,6 +17,14 @@ export type {
   IndexQueueErrorKind
 } from "./queue.js";
 export {
+  DocumentDeleteExecutor,
+  SourceScanReconciler
+} from "./reconcile.js";
+export type {
+  DocumentDeleteExecutorOptions,
+  SourceScanReconcilerOptions
+} from "./reconcile.js";
+export {
   DocumentUpsertIndexer
 } from "./upsert.js";
 export type {

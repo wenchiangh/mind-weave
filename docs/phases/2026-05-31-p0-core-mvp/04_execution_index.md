@@ -329,7 +329,7 @@ Status tags track current phase:
 
 ## WU-12 Delete Reconciliation and Soft Delete
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/12-delete-reconciliation-and-soft-delete.md`
 - Depends on: WU-04, WU-07, WU-10, WU-11
 - Design refs:
@@ -343,7 +343,10 @@ Status tags track current phase:
 - Observable result:
   - Removing a Markdown file from a configured source eventually removes its chunks from default query results while preserving traceable deleted metadata.
 - Validation summary:
-  - Integration tests cover delete while runtime is stopped, delete event during runtime, delete overriding pending upsert, and deleted row exclusion.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Integration tests cover startup-style scan reconciliation, queue-executed delete jobs, and deleted row exclusion from vector search.
+  - Existing queue tests cover delete overriding pending upsert and later upsert replacing pending delete.
 - Completion criteria:
   - Startup scan can reconstruct delete work.
   - Typecheck and tests pass.

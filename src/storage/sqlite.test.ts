@@ -329,6 +329,34 @@ describe("SQLiteStorage", () => {
     storage.close();
   });
 
+  it("soft-deletes document chunks and excludes their vectors from search", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath(), {
+      vectorDimensions: 3
+    });
+    await storage.saveSources([createSource("source_a")]);
+    await storage.upsertDocument(createDocument("doc_a"));
+    const chunk = createChunk(0);
+    const embedding = createEmbedding(chunk.chunkId, 0);
+    await storage.replaceDocumentChunks("doc_a", [chunk], [embedding]);
+    await storage.replaceEmbeddingVectors([
+      { embeddingId: embedding.embeddingId, vector: [1, 0, 0] }
+    ]);
+
+    await storage.markDocumentDeleted("doc_a", 3000);
+
+    await expect(storage.listActiveDocuments("source_a")).resolves.toEqual([]);
+    await expect(storage.listDocumentChunks("doc_a")).resolves.toEqual([]);
+    await expect(storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10
+    })).resolves.toEqual([]);
+    expect(storage.countRows("chunks")).toBe(1);
+    expect(storage.countRows("embeddings")).toBe(1);
+    expect(storage.countRows("vec_embeddings")).toBe(1);
+
+    storage.close();
+  });
+
   it("preserves vector rows for unchanged replacement embeddings", async () => {
     const storage = new SQLiteStorage(await createDatabasePath(), {
       vectorDimensions: 3
