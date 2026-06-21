@@ -30,6 +30,8 @@ const queryResult: QueryResult = {
   sourceId: "source-1",
   sourceName: "Vault",
   uri: "file:///vault/note.md",
+  relativePath: "note.md",
+  chunkIndex: 3,
   text: "Full chunk text",
   score: 0.91,
   documentStatus: "indexed",
@@ -37,7 +39,7 @@ const queryResult: QueryResult = {
   sourceUpdatedAt: 1000,
   indexedAt: 2000,
   metadata: {
-    section: "Intro"
+    headingPath: ["Project", "Decision"]
   }
 };
 

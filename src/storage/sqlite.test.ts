@@ -97,7 +97,14 @@ async function insertSearchFixture(storage: SQLiteStorage): Promise<void> {
 
   for (const document of documents) {
     await storage.upsertDocument(document);
-    const chunk = createChunk(0, document.documentId, document.documentId, document.sourceId);
+    const chunk = {
+      ...createChunk(0, document.documentId, document.documentId, document.sourceId),
+      ...(document.documentId === "doc_near" ? {
+        metadata: {
+          headingPath: ["Computing", "JavaScript"]
+        }
+      } : {})
+    };
     await storage.replaceDocumentChunks(document.documentId, [chunk], [
       createEmbedding(chunk.chunkId, 0)
     ]);
@@ -309,13 +316,18 @@ describe("SQLiteStorage", () => {
       sourceId: "source_a",
       sourceName: "Source source_a",
       uri: "file:///tmp/source_a/doc_near.md",
+      relativePath: "doc_near.md",
+      chunkIndex: 0,
       text: "doc_near",
       distance: 0,
       score: 1,
       documentStatus: "indexed",
       sourceStatus: "active",
       sourceUpdatedAt: 1000,
-      indexedAt: 2000
+      indexedAt: 2000,
+      metadata: {
+        headingPath: ["Computing", "JavaScript"]
+      }
     });
     expect(results.every((result) => result.score > 0 && result.score <= 1)).toBe(true);
 

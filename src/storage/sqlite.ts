@@ -515,6 +515,8 @@ export class SQLiteStorage implements
         chunks.source_id AS sourceId,
         sources.name AS sourceName,
         documents.uri AS uri,
+        documents.relative_path AS relativePath,
+        chunks.chunk_index AS chunkIndex,
         chunks.text AS text,
         knn.distance AS distance,
         1.0 / (1.0 + knn.distance) AS score,
@@ -537,6 +539,8 @@ export class SQLiteStorage implements
       readonly sourceId: string;
       readonly sourceName: string;
       readonly uri: string;
+      readonly relativePath: string | null;
+      readonly chunkIndex: number;
       readonly text: string;
       readonly distance: number;
       readonly score: number;
@@ -553,6 +557,8 @@ export class SQLiteStorage implements
       sourceId: row.sourceId,
       sourceName: row.sourceName,
       uri: row.uri,
+      ...(row.relativePath === null ? {} : { relativePath: row.relativePath }),
+      chunkIndex: row.chunkIndex,
       text: row.text,
       distance: row.distance,
       score: row.score,

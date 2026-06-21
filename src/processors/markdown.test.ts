@@ -100,6 +100,35 @@ Use local processing.`));
     ]);
   });
 
+  it("adds current heading path metadata while preserving continuous chunk indexes", async () => {
+    const chunks = await new MarkdownProcessor().process(createDocument(`Opening note.
+
+# Project
+
+Intro.
+
+## Decision
+
+Use local processing.
+
+## Risks
+
+Keep scope small.
+
+# Archive
+
+Old notes.`));
+
+    expect(chunks.map((chunk) => chunk.index)).toEqual([0, 1, 2, 3, 4]);
+    expect(chunks.map((chunk) => chunk.metadata)).toEqual([
+      undefined,
+      { headingPath: ["Project"] },
+      { headingPath: ["Project", "Decision"] },
+      { headingPath: ["Project", "Risks"] },
+      { headingPath: ["Archive"] }
+    ]);
+  });
+
   it("emits content before the first heading", async () => {
     const chunks = await new MarkdownProcessor().process(createDocument(`Opening note.
 

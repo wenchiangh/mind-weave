@@ -47,6 +47,8 @@ export class CoreQueryService implements QueryService {
       sourceId: result.sourceId,
       sourceName: result.sourceName,
       uri: result.uri,
+      ...(result.relativePath === undefined ? {} : { relativePath: result.relativePath }),
+      chunkIndex: result.chunkIndex,
       text: result.text,
       score: result.score,
       documentStatus: result.documentStatus,

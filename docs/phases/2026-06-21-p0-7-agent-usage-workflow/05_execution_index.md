@@ -50,7 +50,13 @@ This document tracks the P0.7 evaluation phase.
 
 ## Recommended Follow-Up
 
-Create a focused implementation phase for retrieval result metadata:
+Focused implementation phase created:
+
+- `../2026-06-21-p0-8-retrieval-result-metadata/00_spec.md`
+- `../2026-06-21-p0-8-retrieval-result-metadata/01_implementation_plan.md`
+- `../2026-06-21-p0-8-retrieval-result-metadata/02_execution_index.md`
+
+Scope:
 
 - `relativePath`
 - `chunkIndex`

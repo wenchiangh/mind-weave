@@ -87,6 +87,8 @@ export type VectorSearchResult = {
   readonly sourceId: EntityId;
   readonly sourceName: string;
   readonly uri: UriString;
+  readonly relativePath?: string;
+  readonly chunkIndex: number;
   readonly text: string;
   readonly distance: number;
   readonly score: number;

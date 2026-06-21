@@ -24,6 +24,11 @@ type MarkdownSection = {
   readonly body: string;
 };
 
+type MarkdownChunkDraft = {
+  readonly text: string;
+  readonly headingPath: readonly string[];
+};
+
 type MarkdownHeading = {
   readonly level: number;
   readonly text: string;
@@ -53,9 +58,10 @@ export class MarkdownProcessor implements DocumentProcessor {
       return [];
     }
 
-    const chunkTexts = splitMarkdown(stripFrontmatter(document.content), this.settings);
+    const chunkDrafts = splitMarkdown(stripFrontmatter(document.content), this.settings);
 
-    return chunkTexts.map((text, index) => {
+    return chunkDrafts.map((chunk, index) => {
+      const text = chunk.text;
       const contentHash = createChunkContentHash(text);
       return {
         chunkId: createChunkId({
@@ -67,7 +73,12 @@ export class MarkdownProcessor implements DocumentProcessor {
         sourceId: document.sourceId,
         index,
         text,
-        contentHash
+        contentHash,
+        ...(chunk.headingPath.length === 0 ? {} : {
+          metadata: {
+            headingPath: chunk.headingPath
+          }
+        })
       };
     });
   }
@@ -76,7 +87,7 @@ export class MarkdownProcessor implements DocumentProcessor {
 function splitMarkdown(
   markdown: string,
   settings: ResolvedMarkdownProcessorSettings
-): readonly string[] {
+): readonly MarkdownChunkDraft[] {
   const sections = splitIntoSections(markdown);
   return sections.flatMap((section) => splitSection(section, settings));
 }
@@ -154,15 +165,20 @@ function parseHeading(line: string): MarkdownHeading | null {
 function splitSection(
   section: MarkdownSection,
   settings: ResolvedMarkdownProcessorSettings
-): readonly string[] {
+): readonly MarkdownChunkDraft[] {
   const headingContext = formatHeadingContext(section.headingPath);
   const bodyChunks = splitOversizedText(section.body, settings);
+  const headingPath = section.headingPath.map((heading) => heading.text);
 
   return bodyChunks
     .map((body) => normalizeChunkText(
       headingContext.length > 0 ? `${headingContext}\n\n${body}` : body
     ))
-    .filter((text) => text.length > 0);
+    .filter((text) => text.length > 0)
+    .map((text) => ({
+      text,
+      headingPath
+    }));
 }
 
 function formatHeadingContext(headings: readonly MarkdownHeading[]): string {

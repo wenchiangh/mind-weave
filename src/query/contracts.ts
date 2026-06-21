@@ -21,6 +21,8 @@ export type QueryResult = {
   readonly sourceId: EntityId;
   readonly sourceName: string;
   readonly uri: UriString;
+  readonly relativePath?: string;
+  readonly chunkIndex: number;
   readonly text: string;
   readonly score: number;
   readonly documentStatus: string;
