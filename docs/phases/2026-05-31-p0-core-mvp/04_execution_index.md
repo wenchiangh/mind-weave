@@ -259,7 +259,7 @@ Status tags track current phase:
 
 ## WU-09 Embedding Provider
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/09-embedding-provider.md`
 - Depends on: WU-01
 - Design refs:
@@ -272,7 +272,11 @@ Status tags track current phase:
 - Observable result:
   - Core can embed document chunks and query text through a provider interface, with normal tests using fake embeddings and no external API calls.
 - Validation summary:
-  - Unit tests cover request payloads, batching, dimensions omission/inclusion, missing API key errors, retryable failures, non-retryable failures, and fake embedding determinism.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Unit tests cover request payloads, batching, query embedding, dimensions omission/inclusion, missing API key errors, retryable failures, non-retryable failures, and fake embedding determinism.
+  - Normal tests use mock fetch/fake provider and do not call real embedding APIs.
+  - Embedding boundary tests prove the module does not import config, app, CLI, storage, indexing, processors, sources, or query modules.
 - Completion criteria:
   - Real provider tests are isolated from normal test suite.
   - Typecheck and normal tests pass without network access.

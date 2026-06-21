@@ -90,3 +90,19 @@ export type {
   StoredEmbeddingVector,
   StoredSource
 } from "./storage/index.js";
+export {
+  EmbeddingProviderError,
+  FakeEmbeddingProvider,
+  OpenAICompatibleEmbeddingProvider,
+  isEmbeddingProviderError,
+  isRetryableKind
+} from "./embeddings/index.js";
+export type {
+  EmbeddingConfigIdentity,
+  EmbeddingInput,
+  EmbeddingProvider,
+  EmbeddingProviderErrorKind,
+  EmbeddingResult,
+  FakeEmbeddingProviderOptions,
+  OpenAICompatibleEmbeddingProviderOptions
+} from "./embeddings/index.js";
