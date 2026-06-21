@@ -33,6 +33,17 @@ export type StoredDocument = {
 
 export type DocumentStatusCounts = Record<StoredDocument["status"], number>;
 
+export type SourceDocumentStatusCounts = {
+  readonly sourceId: EntityId;
+  readonly documents: DocumentStatusCounts;
+};
+
+export type IndexStats = {
+  readonly chunks: number;
+  readonly embeddings: number;
+  readonly sources: readonly SourceDocumentStatusCounts[];
+};
+
 export type StoredChunk = {
   readonly chunkId: EntityId;
   readonly documentId: EntityId;
@@ -121,4 +132,8 @@ export interface IndexConfigStore {
 
 export interface DocumentStatusStore {
   countDocumentsByStatus(): Promise<DocumentStatusCounts>;
+}
+
+export interface IndexStatsStore {
+  readIndexStats(): Promise<IndexStats>;
 }

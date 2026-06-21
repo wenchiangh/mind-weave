@@ -87,7 +87,12 @@ describe("createRuntimeFromConfigFile", () => {
       embedding: {
         provider: "openai-compatible",
         model: "text-embedding-3-small",
-        dimensions: undefined
+        dimensions: undefined,
+        readiness: {
+          ready: false,
+          apiKeyEnv: "OPENAI_API_KEY",
+          apiKeyPresent: false
+        }
       },
       storage: {
         type: "sqlite",
@@ -102,13 +107,53 @@ describe("createRuntimeFromConfigFile", () => {
           stale: 0,
           failed: 0,
           deleted: 0
-        }
+        },
+        chunks: 0,
+        embeddings: 0,
+        sources: []
       },
       mcp: {
         enabled: true
       },
       unavailableCapabilities: []
     });
+  });
+
+  it("inspects configured sources without indexing or calling embeddings", async () => {
+    const { configPath, notesPath } = await writeConfigFile();
+    await writeFile(path.join(notesPath, "keep.md"), "keep", "utf8");
+    await mkdir(path.join(notesPath, "drafts"));
+    await writeFile(path.join(notesPath, "drafts", "skip.md"), "skip", "utf8");
+    const runtime = await createRuntimeFromConfigFile(configPath);
+
+    const result = await runtime.inspectSources();
+
+    expect(result.sources).toEqual([
+      expect.objectContaining({
+        sourceId: "notes",
+        includedDocumentCount: 2,
+        skipped: {
+          excluded: 0,
+          ignored: 0,
+          unsupported: 0,
+          symlink: 0
+        },
+        topLevelPathCounts: {
+          drafts: 1,
+          "keep.md": 1
+        }
+      })
+    ]);
+    await expect(runtime.getStatus()).resolves.toMatchObject({
+      index: {
+        documents: {
+          indexed: 0
+        },
+        chunks: 0,
+        embeddings: 0
+      }
+    });
+    await runtime.stop();
   });
 
   it("can scan an empty configured source", async () => {
@@ -126,18 +171,62 @@ describe("createRuntimeFromConfigFile", () => {
 
     await runtime.scan();
 
-    expect(logger.events).toMatchObject([
-      {
+    expect(logger.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
         level: "info",
         event: "scan.started",
         sourceCount: 1
-      },
-      {
+      }),
+      expect.objectContaining({
         level: "info",
         event: "scan.finished",
+        sourceCount: 1,
+        discoveredDocumentCount: 0
+      })
+    ]));
+    await runtime.stop();
+  });
+
+  it("emits coarse scan progress events", async () => {
+    const { configPath, notesPath } = await writeConfigFile();
+    await writeFile(path.join(notesPath, "note.md"), "# Note\n\nContent", "utf8");
+    const logger = new CapturingLogger();
+    const runtime = await createRuntimeFromConfigFile(configPath, { logger });
+    const progress: unknown[] = [];
+
+    await runtime.scan({
+      onProgress: (event) => {
+        progress.push(event);
+      }
+    });
+
+    expect(progress).toEqual([
+      {
+        type: "scan.started",
         sourceCount: 1
+      },
+      {
+        type: "source.scan.started",
+        sourceId: "notes"
+      },
+      {
+        type: "source.scan.finished",
+        sourceId: "notes",
+        candidateCount: 1
+      },
+      {
+        type: "scan.finished",
+        sourceCount: 1,
+        discoveredDocumentCount: 1
       }
     ]);
+    expect(logger.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event: "source.scan.finished",
+        sourceId: "notes",
+        candidateCount: 1
+      })
+    ]));
     await runtime.stop();
   });
 

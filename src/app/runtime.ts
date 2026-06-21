@@ -27,6 +27,7 @@ import {
 } from "../sources/index.js";
 import type {
   SourceDefinition,
+  SourceInspector,
   SourceProvider,
   SourceWatcher
 } from "../sources/index.js";
@@ -35,6 +36,9 @@ import type { SQLiteStorageOptions } from "../storage/index.js";
 import type {
   AppRuntime,
   RuntimeHealth,
+  RuntimeScanOptions,
+  RuntimeScanProgressEvent,
+  RuntimeSourceInspection,
   RuntimeStatus
 } from "./contracts.js";
 
@@ -71,6 +75,7 @@ class ConfiguredAppRuntime implements AppRuntime {
   private readonly storage: SQLiteStorage;
   private readonly ownsStorage: boolean;
   private readonly sourceProvider: SourceProvider;
+  private readonly sourceInspector: SourceInspector;
   private readonly embeddingProvider: EmbeddingProvider;
   private readonly upsertIndexer: DocumentUpsertIndexer;
   private readonly deleteExecutor: DocumentDeleteExecutor;
@@ -97,6 +102,9 @@ class ConfiguredAppRuntime implements AppRuntime {
     );
     this.ownsStorage = options.storage === undefined;
     this.sourceProvider = options.sourceProvider ?? new LocalFsSourceProvider();
+    this.sourceInspector = isSourceInspector(this.sourceProvider)
+      ? this.sourceProvider
+      : createUnsupportedSourceInspector();
     this.upsertIndexer = new DocumentUpsertIndexer({
       storage: this.storage,
       processors: [new MarkdownProcessor()],
@@ -149,7 +157,8 @@ class ConfiguredAppRuntime implements AppRuntime {
       embedding: {
         provider: this.config.embedding.provider,
         model: this.config.embedding.model,
-        dimensions: this.config.embedding.dimensions
+        dimensions: this.config.embedding.dimensions,
+        readiness: createProviderReadiness(this.config.embedding.apiKeyEnv)
       },
       storage: {
         type: this.config.storage.type,
@@ -159,7 +168,8 @@ class ConfiguredAppRuntime implements AppRuntime {
         logPath: this.logger.logPath
       },
       index: {
-        documents: await this.storage.countDocumentsByStatus()
+        documents: await this.storage.countDocumentsByStatus(),
+        ...await this.storage.readIndexStats()
       },
       mcp: {
         enabled: this.config.mcp.enabled
@@ -183,9 +193,14 @@ class ConfiguredAppRuntime implements AppRuntime {
     });
   }
 
-  async scan(): Promise<void> {
-    await this.logInfo("scan.started", {
+  async scan(options: RuntimeScanOptions = {}): Promise<void> {
+    const startedEvent: RuntimeScanProgressEvent = {
+      type: "scan.started",
       sourceCount: this.config.sourceDefinitions.length
+    };
+    emitProgress(options, startedEvent);
+    await this.logInfo(startedEvent.type, {
+      sourceCount: startedEvent.sourceCount
     });
 
     try {
@@ -197,8 +212,28 @@ class ConfiguredAppRuntime implements AppRuntime {
         status: source.status
       })));
 
+      let discoveredDocumentCount = 0;
       for (const source of this.config.sourceDefinitions) {
+        const sourceStartedEvent: RuntimeScanProgressEvent = {
+          type: "source.scan.started",
+          sourceId: source.id
+        };
+        emitProgress(options, sourceStartedEvent);
+        await this.logInfo(sourceStartedEvent.type, {
+          sourceId: sourceStartedEvent.sourceId
+        });
         const scan = await this.sourceProvider.scan(source);
+        discoveredDocumentCount += scan.candidates.length;
+        const sourceFinishedEvent: RuntimeScanProgressEvent = {
+          type: "source.scan.finished",
+          sourceId: source.id,
+          candidateCount: scan.candidates.length
+        };
+        emitProgress(options, sourceFinishedEvent);
+        await this.logInfo(sourceFinishedEvent.type, {
+          sourceId: sourceFinishedEvent.sourceId,
+          candidateCount: sourceFinishedEvent.candidateCount
+        });
         const reconciler = new SourceScanReconciler({
           storage: this.storage
         });
@@ -224,8 +259,15 @@ class ConfiguredAppRuntime implements AppRuntime {
       }
 
       await this.queue.drain();
-      await this.logInfo("scan.finished", {
-        sourceCount: this.config.sourceDefinitions.length
+      const finishedEvent: RuntimeScanProgressEvent = {
+        type: "scan.finished",
+        sourceCount: this.config.sourceDefinitions.length,
+        discoveredDocumentCount
+      };
+      emitProgress(options, finishedEvent);
+      await this.logInfo(finishedEvent.type, {
+        sourceCount: finishedEvent.sourceCount,
+        discoveredDocumentCount: finishedEvent.discoveredDocumentCount
       });
     } catch (error) {
       await this.logError("scan.failed", {
@@ -233,6 +275,28 @@ class ConfiguredAppRuntime implements AppRuntime {
       });
       throw error;
     }
+  }
+
+  async inspectSources(): Promise<{
+    readonly sources: readonly RuntimeSourceInspection[];
+  }> {
+    const inspections = await Promise.all(this.config.sourceDefinitions.map(async (source) => {
+      const inspection = await this.sourceInspector.inspect(source);
+      return {
+        sourceId: source.id,
+        name: source.name,
+        rootUri: source.rootUri,
+        includedDocumentCount: inspection.includedCandidates.length,
+        skipped: inspection.skipped,
+        topLevelPathCounts: inspection.topLevelPathCounts,
+        sampleIncludedPaths: inspection.sampleIncludedPaths,
+        sampleExcludedPaths: inspection.sampleExcludedPaths
+      };
+    }));
+
+    return {
+      sources: inspections
+    };
   }
 
   async query(input: string): Promise<readonly QueryResult[]> {
@@ -304,4 +368,34 @@ function createSQLiteOptions(provider: EmbeddingProvider): SQLiteStorageOptions 
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function createProviderReadiness(apiKeyEnv: string) {
+  const apiKey = process.env[apiKeyEnv];
+  const apiKeyPresent = apiKey !== undefined && apiKey.length > 0;
+
+  return {
+    ready: apiKeyPresent,
+    apiKeyEnv,
+    apiKeyPresent
+  };
+}
+
+function emitProgress(
+  options: RuntimeScanOptions,
+  event: RuntimeScanProgressEvent
+): void {
+  options.onProgress?.(event);
+}
+
+function createUnsupportedSourceInspector(): SourceInspector {
+  return {
+    async inspect() {
+      throw new Error("Configured source provider does not support inspection.");
+    }
+  };
+}
+
+function isSourceInspector(value: SourceProvider): value is SourceProvider & SourceInspector {
+  return "inspect" in value && typeof value.inspect === "function";
 }

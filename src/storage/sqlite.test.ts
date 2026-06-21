@@ -216,6 +216,51 @@ describe("SQLiteStorage", () => {
     storage.close();
   });
 
+  it("reports index diagnostics for status", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath());
+    await storage.saveSources([
+      createSource("source_a"),
+      createSource("source_b")
+    ]);
+    await storage.upsertDocument(createDocument("doc_a", "source_a"));
+    await storage.upsertDocument(createDocument("doc_b", "source_a"));
+    await storage.upsertDocument(createDocument("doc_c", "source_b", "failed"));
+    await storage.replaceDocumentChunks("doc_a", [
+      createChunk(0, "a", "doc_a", "source_a"),
+      createChunk(1, "b", "doc_a", "source_a")
+    ], [
+      createEmbedding("doc_a_chunk_0", 0),
+      createEmbedding("doc_a_chunk_1", 1)
+    ]);
+
+    await expect(storage.readIndexStats()).resolves.toEqual({
+      chunks: 2,
+      embeddings: 2,
+      sources: [
+        {
+          sourceId: "source_a",
+          documents: {
+            indexed: 2,
+            stale: 0,
+            failed: 0,
+            deleted: 0
+          }
+        },
+        {
+          sourceId: "source_b",
+          documents: {
+            indexed: 0,
+            stale: 0,
+            failed: 1,
+            deleted: 0
+          }
+        }
+      ]
+    });
+
+    storage.close();
+  });
+
   it("transactionally replaces chunks and embedding metadata for a document", async () => {
     const storage = new SQLiteStorage(await createDatabasePath());
     await storage.upsertDocument(createDocument("doc_a"));

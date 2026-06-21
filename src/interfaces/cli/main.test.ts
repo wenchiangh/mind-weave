@@ -78,7 +78,7 @@ describe("runCli", () => {
     expect(result.exitCode).toBe(1);
     expect(JSON.parse(result.writes[0] ?? "")).toEqual({
       code: "CLI_USAGE_ERROR",
-      message: "Usage: mindweave health | status --config <path> | start --config <path> | scan --config <path> | watch --config <path> | query --config <path> <query> | mcp --config <path>"
+      message: "Usage: mindweave health | status --config <path> | inspect --config <path> | start --config <path> | scan --config <path> | watch --config <path> | query --config <path> <query> | mcp --config <path>"
     });
   });
 
@@ -113,7 +113,12 @@ describe("runCli", () => {
       ],
       embedding: {
         provider: "openai-compatible",
-        model: "text-embedding-3-small"
+        model: "text-embedding-3-small",
+        readiness: {
+          ready: false,
+          apiKeyEnv: "OPENAI_API_KEY",
+          apiKeyPresent: false
+        }
       },
       storage: {
         type: "sqlite",
@@ -128,7 +133,10 @@ describe("runCli", () => {
           stale: 0,
           failed: 0,
           deleted: 0
-        }
+        },
+        chunks: 0,
+        embeddings: 0,
+        sources: []
       },
       mcp: {
         enabled: false
@@ -138,12 +146,66 @@ describe("runCli", () => {
   });
 
   it("routes scan through runtime and prints a structured success payload", async () => {
+    const runtime = new CapturingRuntime(createNoopMcpToolHandlers());
+
+    const result = await runCliWithWrites(["scan", "--config", "mind-weave.jsonc"], {
+      createRuntime: async () => runtime
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.writes.map((line) => JSON.parse(line))).toEqual([
+      {
+        event: {
+          type: "scan.started",
+          sourceCount: 1
+        }
+      },
+      {
+        status: "scanned"
+      }
+    ]);
+  });
+
+  it("routes inspect through runtime without scanning", async () => {
+    const runtime = new CapturingRuntime(createNoopMcpToolHandlers());
+
+    const result = await runCliWithWrites(["inspect", "--config", "mind-weave.jsonc"], {
+      createRuntime: async () => runtime
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.writes[0] ?? "")).toEqual({
+      sources: [
+        {
+          sourceId: "notes",
+          name: "Notes",
+          rootUri: "file:///notes",
+          includedDocumentCount: 1,
+          skipped: {
+            excluded: 0,
+            ignored: 0,
+            unsupported: 0,
+            symlink: 0
+          },
+          topLevelPathCounts: {
+            "note.md": 1
+          },
+          sampleIncludedPaths: ["note.md"],
+          sampleExcludedPaths: []
+        }
+      ]
+    });
+    expect(runtime.inspectCalls).toBe(1);
+    expect(runtime.scanCalls).toBe(0);
+  });
+
+  it("routes scan through a real JSONC config file and prints a structured success payload", async () => {
     const { configPath } = await writeConfigFile();
 
     const result = await runCliWithWrites(["scan", "--config", configPath]);
 
     expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.writes[0] ?? "")).toEqual({
+    expect(JSON.parse(result.writes.at(-1) ?? "")).toEqual({
       status: "scanned"
     });
   });
@@ -257,7 +319,12 @@ class CapturingRuntime implements AppRuntime {
       sources: [],
       embedding: {
         provider: "openai-compatible",
-        model: "text-embedding-3-small"
+        model: "text-embedding-3-small",
+        readiness: {
+          ready: false,
+          apiKeyEnv: "OPENAI_API_KEY",
+          apiKeyPresent: false
+        }
       },
       storage: {
         type: "sqlite",
@@ -272,7 +339,10 @@ class CapturingRuntime implements AppRuntime {
           stale: 0,
           failed: 0,
           deleted: 0
-        }
+        },
+        chunks: 0,
+        embeddings: 0,
+        sources: []
       },
       mcp: {
         enabled: true
@@ -286,8 +356,37 @@ class CapturingRuntime implements AppRuntime {
     this.calls.push("runtime.start");
   }
 
-  async scan(): Promise<void> {
+  async scan(options: Parameters<AppRuntime["scan"]>[0]): Promise<void> {
     this.scanCalls += 1;
+    options?.onProgress?.({
+      type: "scan.started",
+      sourceCount: 1
+    });
+  }
+
+  async inspectSources() {
+    this.inspectCalls += 1;
+    return {
+      sources: [
+        {
+          sourceId: "notes",
+          name: "Notes",
+          rootUri: "file:///notes",
+          includedDocumentCount: 1,
+          skipped: {
+            excluded: 0,
+            ignored: 0,
+            unsupported: 0,
+            symlink: 0
+          },
+          topLevelPathCounts: {
+            "note.md": 1
+          },
+          sampleIncludedPaths: ["note.md"],
+          sampleExcludedPaths: []
+        }
+      ]
+    };
   }
 
   async query() {
@@ -302,6 +401,7 @@ class CapturingRuntime implements AppRuntime {
   async stop(): Promise<void> {}
 
   readonly calls: string[] = [];
+  inspectCalls = 0;
 }
 
 function createNoopMcpToolHandlers(): McpToolHandlers {

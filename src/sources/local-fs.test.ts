@@ -112,6 +112,49 @@ describe("LocalFsSourceProvider", () => {
     ]);
   });
 
+  it("inspects included and excluded paths without losing source scan behavior", async () => {
+    const rootPath = await createFixtureDirectory();
+    await writeFixtureFile(rootPath, "keep.md");
+    await writeFixtureFile(rootPath, "nested/keep.markdown");
+    await writeFixtureFile(rootPath, "drafts/remove.md");
+    await writeFixtureFile(rootPath, "archive/remove.md");
+    await writeFixtureFile(rootPath, "image.png");
+    await writeFixtureFile(rootPath, ".hidden.md");
+    const source = {
+      ...createSource(rootPath),
+      metadata: {
+        rootPath,
+        excludePatterns: ["(^|/)drafts/", "^archive/"]
+      }
+    };
+
+    const result = await new LocalFsSourceProvider().inspect(source);
+
+    expect(result.sourceId).toBe("notes");
+    expect(result.includedCandidates.map((candidate) => candidate.relativePath)).toEqual([
+      "keep.md",
+      "nested/keep.markdown"
+    ]);
+    expect(result.topLevelPathCounts).toEqual({
+      "keep.md": 1,
+      nested: 1
+    });
+    expect(result.skipped).toEqual({
+      excluded: 2,
+      ignored: 1,
+      unsupported: 1,
+      symlink: 0
+    });
+    expect(result.sampleIncludedPaths).toEqual([
+      "keep.md",
+      "nested/keep.markdown"
+    ]);
+    expect(result.sampleExcludedPaths).toEqual([
+      "archive/remove.md",
+      "drafts/remove.md"
+    ]);
+  });
+
   it("does not follow symlinks", async () => {
     const rootPath = await createFixtureDirectory();
     const externalPath = await createFixtureDirectory();

@@ -8,6 +8,8 @@ import type {
   DocumentStatusStore,
   DocumentRegistryStore,
   EmbeddingVectorStore,
+  IndexStats,
+  IndexStatsStore,
   IndexConfigStore,
   SourceStatusStore,
   StoredChunk,
@@ -76,6 +78,7 @@ export class SQLiteStorage implements
   SourceStatusStore,
   DocumentRegistryStore,
   DocumentStatusStore,
+  IndexStatsStore,
   ChunkEmbeddingStore,
   EmbeddingVectorStore,
   VectorSearchStore,
@@ -211,12 +214,7 @@ export class SQLiteStorage implements
   }
 
   async countDocumentsByStatus(): Promise<DocumentStatusCounts> {
-    const counts: DocumentStatusCounts = {
-      indexed: 0,
-      stale: 0,
-      failed: 0,
-      deleted: 0
-    };
+    const counts = createEmptyDocumentStatusCounts();
     const rows = this.db.prepare(`
       SELECT status AS value, COUNT(*) AS count
       FROM documents
@@ -231,6 +229,41 @@ export class SQLiteStorage implements
     }
 
     return counts;
+  }
+
+  async readIndexStats(): Promise<IndexStats> {
+    const sourceRows = this.db.prepare(`
+      SELECT
+        sources.source_id AS sourceId,
+        documents.status AS status,
+        COUNT(documents.document_id) AS count
+      FROM sources
+      LEFT JOIN documents ON documents.source_id = sources.source_id
+      GROUP BY sources.source_id, documents.status
+      ORDER BY sources.source_id
+    `).all() as Array<{
+      readonly sourceId: string;
+      readonly status: StoredDocument["status"] | null;
+      readonly count: number;
+    }>;
+    const bySource = new Map<string, DocumentStatusCounts>();
+
+    for (const row of sourceRows) {
+      const counts = bySource.get(row.sourceId) ?? createEmptyDocumentStatusCounts();
+      if (row.status !== null) {
+        counts[row.status] = row.count;
+      }
+      bySource.set(row.sourceId, counts);
+    }
+
+    return {
+      chunks: this.countRows("chunks"),
+      embeddings: this.countRows("embeddings"),
+      sources: [...bySource.entries()].map(([sourceId, documents]) => ({
+        sourceId,
+        documents
+      }))
+    };
   }
 
   async markDocumentDeleted(
@@ -671,6 +704,15 @@ function mapSourceRow(row: SourceRow): StoredSource {
     status: row.status,
     ...(row.last_scanned_at === null ? {} : { lastScannedAt: row.last_scanned_at }),
     ...(row.last_error === null ? {} : { lastError: row.last_error })
+  };
+}
+
+function createEmptyDocumentStatusCounts(): DocumentStatusCounts {
+  return {
+    indexed: 0,
+    stale: 0,
+    failed: 0,
+    deleted: 0
   };
 }
 

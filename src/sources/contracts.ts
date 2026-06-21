@@ -36,6 +36,24 @@ export type SourceScanResult = {
   readonly candidates: readonly SourceCandidate[];
 };
 
+export type SourceInspectionSkippedCounts = {
+  readonly excluded: number;
+  readonly ignored: number;
+  readonly unsupported: number;
+  readonly symlink: number;
+};
+
+export type SourceInspectionResult = {
+  readonly sourceId: SourceId;
+  readonly inspectedAt: UnixMilliseconds;
+  readonly rootUri: UriString;
+  readonly includedCandidates: readonly SourceCandidate[];
+  readonly skipped: SourceInspectionSkippedCounts;
+  readonly topLevelPathCounts: Record<string, number>;
+  readonly sampleIncludedPaths: readonly RelativePath[];
+  readonly sampleExcludedPaths: readonly RelativePath[];
+};
+
 export type SourceDeleteTarget = {
   readonly sourceId: SourceId;
   readonly uri: UriString;
@@ -65,4 +83,8 @@ export interface SourceWatcher {
 
 export interface SourceProvider {
   scan(source: SourceDefinition): Promise<SourceScanResult>;
+}
+
+export interface SourceInspector {
+  inspect(source: SourceDefinition): Promise<SourceInspectionResult>;
 }

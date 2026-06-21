@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type {
   SourceCandidate,
   SourceDefinition,
+  SourceInspectionResult,
+  SourceInspector,
   SourceProvider,
   SourceScanResult
 } from "./contracts.js";
@@ -23,8 +25,31 @@ type LocalFsSourceMetadata = {
   readonly excludePatterns: readonly string[];
 };
 
-export class LocalFsSourceProvider implements SourceProvider {
+type LocalFsCollection = {
+  readonly candidates: SourceCandidate[];
+  readonly skipped: MutableSkippedCounts;
+  readonly excludedPaths: string[];
+};
+
+type MutableSkippedCounts = {
+  excluded: number;
+  ignored: number;
+  unsupported: number;
+  symlink: number;
+};
+
+export class LocalFsSourceProvider implements SourceProvider, SourceInspector {
   async scan(source: SourceDefinition): Promise<SourceScanResult> {
+    const inspection = await this.inspect(source);
+
+    return {
+      sourceId: source.id,
+      scannedAt: inspection.inspectedAt,
+      candidates: inspection.includedCandidates
+    };
+  }
+
+  async inspect(source: SourceDefinition): Promise<SourceInspectionResult> {
     if (source.type !== "local-fs") {
       throw new SourceError({
         code: "SOURCE_UNSUPPORTED_TYPE",
@@ -38,19 +63,31 @@ export class LocalFsSourceProvider implements SourceProvider {
 
     await assertRootDirectory(source, metadata.rootPath);
 
-    const candidates = await this.collectCandidates(
+    const collection = await this.collectCandidates(
       source,
       metadata.rootPath,
       metadata.rootPath,
       excludeRegexes
     );
+    const candidates = collection.candidates.sort((left, right) =>
+      (left.relativePath ?? "").localeCompare(right.relativePath ?? "")
+    );
+    const excludedPaths = collection.excludedPaths.sort((left, right) =>
+      left.localeCompare(right)
+    );
 
     return {
       sourceId: source.id,
-      scannedAt: Date.now(),
-      candidates: candidates.sort((left, right) =>
-        (left.relativePath ?? "").localeCompare(right.relativePath ?? "")
-      )
+      inspectedAt: Date.now(),
+      rootUri: source.rootUri,
+      includedCandidates: candidates,
+      skipped: collection.skipped,
+      topLevelPathCounts: countTopLevelPaths(candidates),
+      sampleIncludedPaths: candidates
+        .map((candidate) => candidate.relativePath)
+        .filter((relativePath): relativePath is string => relativePath !== undefined)
+        .slice(0, 20),
+      sampleExcludedPaths: excludedPaths.slice(0, 20)
     };
   }
 
@@ -59,7 +96,7 @@ export class LocalFsSourceProvider implements SourceProvider {
     rootPath: string,
     currentPath: string,
     excludeRegexes: readonly RegExp[]
-  ): Promise<SourceCandidate[]> {
+  ): Promise<LocalFsCollection> {
     let entries;
     try {
       entries = await readdir(currentPath, {
@@ -75,10 +112,20 @@ export class LocalFsSourceProvider implements SourceProvider {
       });
     }
 
-    const candidates: SourceCandidate[] = [];
+    const collection: LocalFsCollection = {
+      candidates: [],
+      skipped: {
+        excluded: 0,
+        ignored: 0,
+        unsupported: 0,
+        symlink: 0
+      },
+      excludedPaths: []
+    };
 
     for (const entry of entries) {
       if (shouldIgnoreName(entry.name)) {
+        collection.skipped.ignored += 1;
         continue;
       }
 
@@ -86,26 +133,31 @@ export class LocalFsSourceProvider implements SourceProvider {
       const relativePath = normalizeRelativePath(path.relative(rootPath, absolutePath));
 
       if (matchesExclude(relativePath, excludeRegexes)) {
+        collection.skipped.excluded += 1;
+        collection.excludedPaths.push(relativePath);
         continue;
       }
 
       if (entry.isSymbolicLink()) {
+        collection.skipped.symlink += 1;
         continue;
       }
 
       if (entry.isDirectory()) {
-        candidates.push(
-          ...await this.collectCandidates(source, rootPath, absolutePath, excludeRegexes)
+        mergeCollection(
+          collection,
+          await this.collectCandidates(source, rootPath, absolutePath, excludeRegexes)
         );
         continue;
       }
 
       if (!entry.isFile() || !isSupportedMarkdownPath(entry.name)) {
+        collection.skipped.unsupported += 1;
         continue;
       }
 
       const fileStat = await stat(absolutePath);
-      candidates.push({
+      collection.candidates.push({
         sourceId: source.id,
         uri: pathToFileURL(absolutePath).href,
         relativePath,
@@ -115,8 +167,40 @@ export class LocalFsSourceProvider implements SourceProvider {
       });
     }
 
-    return candidates;
+    return collection;
   }
+}
+
+function mergeCollection(
+  target: LocalFsCollection,
+  source: LocalFsCollection
+): void {
+  target.candidates.push(...source.candidates);
+  target.excludedPaths.push(...source.excludedPaths);
+  target.skipped.excluded += source.skipped.excluded;
+  target.skipped.ignored += source.skipped.ignored;
+  target.skipped.unsupported += source.skipped.unsupported;
+  target.skipped.symlink += source.skipped.symlink;
+}
+
+function countTopLevelPaths(
+  candidates: readonly SourceCandidate[]
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+
+  for (const candidate of candidates) {
+    const relativePath = candidate.relativePath ?? candidate.uri;
+    const [topLevelPath] = relativePath.split("/");
+    if (topLevelPath === undefined || topLevelPath.length === 0) {
+      continue;
+    }
+
+    counts[topLevelPath] = (counts[topLevelPath] ?? 0) + 1;
+  }
+
+  return Object.fromEntries(
+    Object.entries(counts).sort(([left], [right]) => left.localeCompare(right))
+  );
 }
 
 function extractMetadata(source: SourceDefinition): LocalFsSourceMetadata {

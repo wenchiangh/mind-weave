@@ -21,7 +21,7 @@ export type CliOptions = {
 
 type CliCommand =
   | { readonly name: "health" }
-  | { readonly name: "status" | "start" | "scan" | "watch" | "mcp"; readonly configPath: string }
+  | { readonly name: "status" | "inspect" | "start" | "scan" | "watch" | "mcp"; readonly configPath: string }
   | { readonly name: "query"; readonly configPath: string; readonly query: string };
 
 type CliUsageError = {
@@ -55,6 +55,11 @@ export async function runCli(
       return 0;
     }
 
+    if (command.name === "inspect") {
+      writeJson(io, await runtime.inspectSources());
+      return 0;
+    }
+
     if (command.name === "start") {
       await runtime.start();
       await (options.serveMcp ?? serveMcpOverStdio)({
@@ -69,7 +74,11 @@ export async function runCli(
     }
 
     if (command.name === "scan") {
-      await runtime.scan();
+      await runtime.scan({
+        onProgress: (event) => {
+          writeJson(io, { event });
+        }
+      });
       writeJson(io, { status: "scanned" });
       return 0;
     }
@@ -104,6 +113,7 @@ function parseCommand(args: readonly string[]): CliCommand {
 
   if (
     command === "status"
+    || command === "inspect"
     || command === "start"
     || command === "scan"
     || command === "watch"
@@ -133,7 +143,7 @@ function parseCommand(args: readonly string[]): CliCommand {
   }
 
   throw usageError(
-    "Usage: mindweave health | status --config <path> | start --config <path> | scan --config <path> | watch --config <path> | query --config <path> <query> | mcp --config <path>"
+    "Usage: mindweave health | status --config <path> | inspect --config <path> | start --config <path> | scan --config <path> | watch --config <path> | query --config <path> <query> | mcp --config <path>"
   );
 }
 
