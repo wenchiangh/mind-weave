@@ -24,6 +24,12 @@ This directory separates stable project knowledge from phase-specific execution 
   - [Implementation Outline](./phases/2026-06-21-p0-6-dogfooding-hardening/01_implementation_outline.md)
   - [Execution Index](./phases/2026-06-21-p0-6-dogfooding-hardening/02_execution_index.md)
   - [Local Usage Guide](./phases/2026-06-21-p0-6-dogfooding-hardening/03_local_usage_guide.md)
+- [P0.7 Agent Usage Workflow](./phases/2026-06-21-p0-7-agent-usage-workflow/00_spec.md): evaluation phase for agent retrieval workflow and MCP contract hardening decisions.
+  - [Agent Workflow](./phases/2026-06-21-p0-7-agent-usage-workflow/01_agent_workflow.md)
+  - [Retrieval Eval Set](./phases/2026-06-21-p0-7-agent-usage-workflow/02_eval_set.md)
+  - [Eval Results](./phases/2026-06-21-p0-7-agent-usage-workflow/03_eval_results.md)
+  - [Contract Review](./phases/2026-06-21-p0-7-agent-usage-workflow/04_contract_review.md)
+  - [Execution Index](./phases/2026-06-21-p0-7-agent-usage-workflow/05_execution_index.md)
 - [P1 macOS Tauri Shell](./phases/p1-macos-tauri-shell/00_direction.md): future product shell direction, intentionally kept thin until Core MVP is validated.
 
 Phase directories contain scope, implementation planning, and open questions for a specific stage. They are expected to evolve or be superseded as the project moves forward.
