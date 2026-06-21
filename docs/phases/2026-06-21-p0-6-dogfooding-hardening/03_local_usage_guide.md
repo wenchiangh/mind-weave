@@ -27,7 +27,7 @@ Example config:
     "provider": "openai-compatible",
     "model": "openai/text-embedding-3-small",
     "baseUrl": "https://openrouter.ai/api/v1",
-    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "apiKey": "...",
     "dimensions": 1536,
     "batchSize": 16
   },
@@ -41,12 +41,18 @@ Example config:
 }
 ```
 
-Do not put API keys in the config file. Put them in the environment variable named by `embedding.apiKeyEnv`.
+For the local desktop workflow, putting the provider API key directly in the user-owned config file is the recommended MVP setup because the runtime may be launched by a macOS shell or sidecar without inheriting an interactive terminal environment.
 
-Example:
+`apiKeyEnv` remains supported for CLI-oriented or advanced workflows:
 
-```bash
-export OPENROUTER_API_KEY="..."
+```json
+"embedding": {
+  "provider": "openai-compatible",
+  "model": "openai/text-embedding-3-small",
+  "baseUrl": "https://openrouter.ai/api/v1",
+  "apiKeyEnv": "OPENROUTER_API_KEY",
+  "dimensions": 1536
+}
 ```
 
 ## 2. Inspect Source Before Indexing
@@ -157,13 +163,11 @@ Example MCP client command shape:
     "--config",
     "/Users/wenchiangh/.config/mindweave/config.json"
   ],
-  "env": {
-    "OPENROUTER_API_KEY": "..."
-  }
+  "env": {}
 }
 ```
 
-The exact MCP client config file depends on the agent application.
+The exact MCP client config file depends on the agent application. If `embedding.apiKeyEnv` is used instead of `embedding.apiKey`, the MCP client environment must provide that variable.
 
 ## 7. Start Local Agent Workflow
 

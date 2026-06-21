@@ -43,6 +43,14 @@ export function createShellBridgeHttpServer(
   const server = http.createServer(async (request, response) => {
     const method = request.method ?? "GET";
     const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    setCorsHeaders(request, response);
+
+    if (method === "OPTIONS") {
+      response.statusCode = 204;
+      response.end();
+      return;
+    }
+
     const pathRoutes = routes.filter((route) => route.pathname === pathname);
     const route = pathRoutes.find((candidate) => candidate.method === method);
 
@@ -104,6 +112,18 @@ export function createShellBridgeHttpServer(
       return `http://${options.host}:${port}${pathname}`;
     }
   };
+}
+
+function setCorsHeaders(
+  request: http.IncomingMessage,
+  response: http.ServerResponse
+): void {
+  const origin = request.headers.origin;
+  if (origin === "tauri://localhost" || origin === "http://localhost:1420" || origin === "http://127.0.0.1:1420") {
+    response.setHeader("access-control-allow-origin", origin);
+    response.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
+    response.setHeader("access-control-allow-headers", "content-type");
+  }
 }
 
 function writeJson(

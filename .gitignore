@@ -3,4 +3,4 @@ node_modules/
 dist/
 coverage/
 target/
-src-tauri/gen/
+**/src-tauri/gen/

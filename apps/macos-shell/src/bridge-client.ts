@@ -71,8 +71,9 @@ export type RuntimeEmbeddingPayload = {
   readonly model: string;
   readonly readiness?: {
     readonly ready: boolean;
-    readonly apiKeyEnv: string;
+    readonly apiKeyEnv?: string | undefined;
     readonly apiKeyPresent: boolean;
+    readonly apiKeySource?: "config" | "env" | "missing" | undefined;
   };
 };
 
@@ -99,11 +100,12 @@ export type RuntimeIndexPayload = {
 
 export type RuntimeSourceIndexPayload = {
   readonly sourceId: string;
-  readonly name: string;
-  readonly indexed: number;
-  readonly stale: number;
-  readonly failed: number;
-  readonly deleted: number;
+  readonly documents: {
+    readonly indexed: number;
+    readonly stale: number;
+    readonly failed: number;
+    readonly deleted: number;
+  };
 };
 
 export type RuntimeWatchPayload = {

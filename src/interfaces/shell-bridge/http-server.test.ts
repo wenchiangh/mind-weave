@@ -110,6 +110,39 @@ describe("shell bridge HTTP server", () => {
     }
   });
 
+  it("allows the local Tauri webview origin to call the loopback bridge", async () => {
+    const server = createShellBridgeHttpServer({
+      bridge: new CapturingShellBridge(),
+      host: "127.0.0.1",
+      port: 0
+    });
+
+    await server.start();
+    try {
+      await expect(requestJson("OPTIONS", server.url("/status"), {
+        origin: "tauri://localhost"
+      })).resolves.toMatchObject({
+        status: 204,
+        headers: {
+          "access-control-allow-origin": "tauri://localhost",
+          "access-control-allow-methods": "GET, POST, OPTIONS"
+        },
+        body: ""
+      });
+
+      await expect(requestJson("GET", server.url("/status"), {
+        origin: "tauri://localhost"
+      })).resolves.toMatchObject({
+        status: 200,
+        headers: {
+          "access-control-allow-origin": "tauri://localhost"
+        }
+      });
+    } finally {
+      await server.stop();
+    }
+  });
+
   it("rejects non-loopback bind hosts", () => {
     expect(() => createShellBridgeHttpServer({
       bridge: new CapturingShellBridge(),
@@ -138,22 +171,23 @@ function getJson(url: string): Promise<{
   readonly status: number;
   readonly body: unknown;
 }> {
-  return requestJson("GET", url);
+  return requestJson("GET", url).then(stripHeaders);
 }
 
 function postJson(url: string): Promise<{
   readonly status: number;
   readonly body: unknown;
 }> {
-  return requestJson("POST", url);
+  return requestJson("POST", url).then(stripHeaders);
 }
 
-function requestJson(method: string, url: string): Promise<{
+function requestJson(method: string, url: string, headers: Record<string, string> = {}): Promise<{
   readonly status: number;
+  readonly headers: Record<string, string | string[] | undefined>;
   readonly body: unknown;
 }> {
   return new Promise((resolve, reject) => {
-    const req = request(url, { method }, (res) => {
+    const req = request(url, { method, headers }, (res) => {
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (chunk) => {
@@ -162,7 +196,8 @@ function requestJson(method: string, url: string): Promise<{
       res.on("end", () => {
         resolve({
           status: res.statusCode ?? 0,
-          body: JSON.parse(body) as unknown
+          headers: res.headers,
+          body: body === "" ? "" : JSON.parse(body) as unknown
         });
       });
     });
@@ -170,4 +205,18 @@ function requestJson(method: string, url: string): Promise<{
     req.on("error", reject);
     req.end();
   });
+}
+
+function stripHeaders(result: {
+  readonly status: number;
+  readonly headers: Record<string, string | string[] | undefined>;
+  readonly body: unknown;
+}): {
+  readonly status: number;
+  readonly body: unknown;
+} {
+  return {
+    status: result.status,
+    body: result.body
+  };
 }

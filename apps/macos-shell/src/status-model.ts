@@ -29,6 +29,11 @@ export type DetailRow = {
   readonly primaryPath?: string | undefined;
 };
 
+export type WatchControlState = {
+  readonly canStart: boolean;
+  readonly canStop: boolean;
+};
+
 export type CreateShellPanelModelInput = {
   readonly health: ShellBridgeHealthResult;
   readonly runtimeStatus: RuntimeStatusResult;
@@ -122,6 +127,20 @@ function createWatchRow(status: RuntimeStatusPayload): StatusRow {
   };
 }
 
+export function createWatchControlState(status: string): WatchControlState {
+  if (status === "running" || status === "starting") {
+    return {
+      canStart: false,
+      canStop: true
+    };
+  }
+
+  return {
+    canStart: true,
+    canStop: false
+  };
+}
+
 function createProviderRow(status: RuntimeStatusPayload): StatusRow {
   const embedding = status.embedding;
   if (embedding === undefined) {
@@ -154,12 +173,16 @@ function createIndexRow(status: RuntimeStatusPayload): StatusRow {
 }
 
 function createSourceSummary(status: RuntimeStatusPayload): string {
-  const source = status.index?.sources[0];
-  if (source === undefined) {
+  const sourceIndex = status.index?.sources[0];
+  if (sourceIndex === undefined) {
     return `${status.sourceCount ?? 0} sources`;
   }
 
-  return `${source.name}: ${source.indexed} indexed, ${source.stale} stale, ${source.failed} failed`;
+  const source = status.sources?.find((candidate) => candidate.id === sourceIndex.sourceId);
+  const sourceName = source?.name ?? sourceIndex.sourceId;
+  const documents = sourceIndex.documents;
+
+  return `${sourceName}: ${documents.indexed} indexed, ${documents.stale} stale, ${documents.failed} failed`;
 }
 
 function unavailableStatus(label: string): StatusRow {

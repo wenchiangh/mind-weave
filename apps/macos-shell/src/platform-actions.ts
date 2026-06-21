@@ -1,3 +1,5 @@
+import { open } from "@tauri-apps/plugin-shell";
+
 export function toFileUrl(pathOrUrl: string): string {
   if (pathOrUrl.startsWith("file://")) {
     return pathOrUrl;
@@ -12,6 +14,11 @@ export async function copyText(value: string): Promise<void> {
   await navigator.clipboard.writeText(value);
 }
 
-export function openLocalPath(pathOrUrl: string): void {
-  window.open(toFileUrl(pathOrUrl), "_blank", "noopener,noreferrer");
+export type OpenPath = (path: string) => Promise<void>;
+
+export async function openLocalPath(
+  pathOrUrl: string,
+  openPath: OpenPath = open
+): Promise<void> {
+  await openPath(toFileUrl(pathOrUrl));
 }

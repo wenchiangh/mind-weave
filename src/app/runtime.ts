@@ -172,7 +172,7 @@ class ConfiguredAppRuntime implements AppRuntime {
         provider: this.config.embedding.provider,
         model: this.config.embedding.model,
         dimensions: this.config.embedding.dimensions,
-        readiness: createProviderReadiness(this.config.embedding.apiKeyEnv)
+        readiness: createProviderReadiness(this.config.embedding)
       },
       storage: {
         type: this.config.storage.type,
@@ -205,7 +205,9 @@ class ConfiguredAppRuntime implements AppRuntime {
         provider: this.config.embedding.provider,
         model: this.config.embedding.model,
         baseUrl: this.config.embedding.baseUrl,
-        apiKeyEnv: this.config.embedding.apiKeyEnv,
+        ...(this.config.embedding.apiKeyEnv === undefined
+          ? {}
+          : { apiKeyEnv: this.config.embedding.apiKeyEnv }),
         dimensions: this.config.embedding.dimensions
       },
       storage: {
@@ -476,14 +478,25 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function createProviderReadiness(apiKeyEnv: string) {
-  const apiKey = process.env[apiKeyEnv];
+function createProviderReadiness(embedding: EffectiveConfig["embedding"]) {
+  if (embedding.apiKey !== undefined && embedding.apiKey.length > 0) {
+    return {
+      ready: true,
+      apiKeyPresent: true,
+      apiKeySource: "config" as const
+    };
+  }
+
+  const apiKey = embedding.apiKeyEnv === undefined
+    ? undefined
+    : process.env[embedding.apiKeyEnv];
   const apiKeyPresent = apiKey !== undefined && apiKey.length > 0;
 
   return {
     ready: apiKeyPresent,
-    apiKeyEnv,
-    apiKeyPresent
+    ...(embedding.apiKeyEnv === undefined ? {} : { apiKeyEnv: embedding.apiKeyEnv }),
+    apiKeyPresent,
+    apiKeySource: apiKeyPresent ? "env" as const : "missing" as const
   };
 }
 

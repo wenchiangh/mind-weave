@@ -127,6 +127,22 @@ This document tracks P1 as a single app milestone with recoverable work units.
   - Dogfooding notes and validation result are recorded before expanding UI scope.
   - `work-units/07-local-dogfooding-validation.md`
 
+## WU-08 Menu Bar Panel Behavior Hardening
+
+- [x] Status: `passed`
+- Scope:
+  - Convert the macOS shell from a regular visible window fallback into the accepted menu bar panel behavior.
+  - Hide Dock-first app presence by using accessory-style macOS activation.
+  - Keep the panel hidden on launch.
+  - Toggle the panel from the menu bar icon and from the menu item.
+  - Hide the panel on focus loss.
+  - Keep the window undecorated, non-resizable, always-on-top, and out of the taskbar/Dock.
+- Observable result:
+  - `work-units/08-menu-bar-panel-behavior-hardening.md`
+  - Tauri config tests prove the shell window is configured as a hidden utility panel.
+  - Rust behavior tests prove accessory activation, tray toggle, and focus-loss hide behavior are present.
+  - The rebuilt debug `.app` launches as `MindWeave` through LaunchServices and the bridge remains reachable from the Tauri origin.
+
 ## Deferred
 
 - source editing

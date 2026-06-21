@@ -155,16 +155,17 @@ Needed improvement:
 - no embedding provider call
 - no index mutation
 
-### 4. Provider Configuration Failure Is Easy to Hit
+### 4. Provider Configuration Must Work From Local App Launches
 
-The config correctly uses `apiKeyEnv`, but the active shell did not have `OPENROUTER_API_KEY`.
+The original config used `apiKeyEnv`, but the active shell did not have `OPENROUTER_API_KEY`.
 
-The error path exists, but the normal setup flow does not make provider readiness obvious before a scan/query.
+That behavior is acceptable for CLI usage but too fragile for the local desktop workflow because the runtime may be launched by a macOS shell or sidecar without inheriting an interactive terminal environment.
 
 Needed improvement:
 
-- status or config check should report missing required environment variables without calling the provider
-- setup docs should show the expected environment variable and MCP client command shape
+- config should support an inline local `apiKey` and prefer it over `apiKeyEnv`
+- status should report provider readiness and key source without exposing the key
+- setup docs should recommend `apiKey` for the local desktop MVP and document `apiKeyEnv` as an advanced fallback
 - logs should make provider failures easy to locate
 
 ### 5. Score Semantics Need Calibration

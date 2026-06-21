@@ -7,11 +7,14 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: #f7f7f4;
 }
 
 .panel {
   box-sizing: border-box;
   width: 100%;
+  min-height: 100vh;
+  background: #f7f7f4;
   padding: 16px;
 }
 

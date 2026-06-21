@@ -1,5 +1,9 @@
 import type { ShellBridgeCommandResult } from "./bridge-client.js";
-import type { ShellPanelModel, StatusRow } from "./status-model.js";
+import {
+  createWatchControlState,
+  type ShellPanelModel,
+  type StatusRow
+} from "./status-model.js";
 
 export type ShellPanelActions = {
   readonly onScan?: (() => Promise<ShellBridgeCommandResult>) | undefined;
@@ -34,7 +38,7 @@ function createPanel(model: ShellPanelModel, actions: ShellPanelActions): HTMLEl
     createStatusRow(model.index),
     createDetailRow(model.storage.label, model.storage.detail),
     createStatusRow(model.watch),
-    createControls(actions),
+    createControls(model, actions),
     createStatusRow(model.mcp),
     createPathControls(actions),
     createDetailRow(model.config.label, model.config.detail),
@@ -62,18 +66,19 @@ function createPathControls(actions: ShellPanelActions): HTMLElement {
   return controls;
 }
 
-function createControls(actions: ShellPanelActions): HTMLElement {
+function createControls(model: ShellPanelModel, actions: ShellPanelActions): HTMLElement {
   const controls = document.createElement("section");
   controls.className = "controls";
 
   const feedback = document.createElement("p");
   feedback.className = "action-feedback";
   feedback.textContent = "";
+  const watchControls = createWatchControlState(model.watch.status);
 
   controls.append(
     createButton("Scan", actions.onScan, feedback),
-    createButton("Start Watch", actions.onWatchStart, feedback),
-    createButton("Stop Watch", actions.onWatchStop, feedback),
+    createButton("Start Watch", actions.onWatchStart, feedback, !watchControls.canStart),
+    createButton("Stop Watch", actions.onWatchStop, feedback, !watchControls.canStop),
     feedback
   );
 
@@ -83,12 +88,13 @@ function createControls(actions: ShellPanelActions): HTMLElement {
 function createButton(
   label: string,
   action: (() => Promise<ShellBridgeCommandResult>) | undefined,
-  feedback: HTMLElement
+  feedback: HTMLElement,
+  forceDisabled = false
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = label;
-  button.disabled = action === undefined;
+  button.disabled = forceDisabled || action === undefined;
   button.addEventListener("click", () => {
     if (action === undefined) {
       return;

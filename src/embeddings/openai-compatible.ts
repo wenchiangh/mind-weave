@@ -24,7 +24,8 @@ type FetchLike = (
 export type OpenAICompatibleEmbeddingProviderOptions = {
   readonly model: string;
   readonly baseUrl: string;
-  readonly apiKeyEnv: string;
+  readonly apiKey?: string | undefined;
+  readonly apiKeyEnv?: string | undefined;
   readonly dimensions?: number | undefined;
   readonly batchSize?: number | undefined;
   readonly maxRetries?: number | undefined;
@@ -46,7 +47,8 @@ export class OpenAICompatibleEmbeddingProvider implements EmbeddingProvider {
   private readonly fetchImpl: FetchLike;
   private readonly env: Record<string, string | undefined>;
   private readonly endpoint: string;
-  private readonly apiKeyEnv: string;
+  private readonly apiKey: string | undefined;
+  private readonly apiKeyEnv: string | undefined;
 
   constructor(options: OpenAICompatibleEmbeddingProviderOptions) {
     this.config = {
@@ -59,6 +61,7 @@ export class OpenAICompatibleEmbeddingProvider implements EmbeddingProvider {
     this.fetchImpl = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.env = options.env ?? process.env;
     this.endpoint = `${options.baseUrl.replace(/\/+$/, "")}/embeddings`;
+    this.apiKey = options.apiKey;
     this.apiKeyEnv = options.apiKeyEnv;
   }
 
@@ -114,11 +117,15 @@ export class OpenAICompatibleEmbeddingProvider implements EmbeddingProvider {
   }
 
   private async requestEmbeddings(inputs: readonly string[]): Promise<readonly Vector[]> {
-    const apiKey = this.env[this.apiKeyEnv];
+    const apiKey = this.apiKey ?? (
+      this.apiKeyEnv === undefined ? undefined : this.env[this.apiKeyEnv]
+    );
     if (apiKey === undefined || apiKey.length === 0) {
       throw new EmbeddingProviderError({
         kind: "configuration",
-        message: `Missing API key environment variable: ${this.apiKeyEnv}`,
+        message: this.apiKeyEnv === undefined
+          ? "Missing embedding API key. Configure embedding.apiKey or embedding.apiKeyEnv."
+          : `Missing API key environment variable: ${this.apiKeyEnv}`,
         retryable: false
       });
     }

@@ -151,7 +151,8 @@ class CapturingRuntime implements AppRuntime {
         readiness: {
           ready: true,
           apiKeyEnv: "OPENAI_API_KEY",
-          apiKeyPresent: true
+          apiKeyPresent: true,
+          apiKeySource: "env" as const
         }
       },
       storage: {

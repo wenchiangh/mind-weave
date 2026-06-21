@@ -1,11 +1,34 @@
 import { describe, expect, it } from "vitest";
-import { createShellPanelModel } from "./status-model.js";
+import { createShellPanelModel, createWatchControlState } from "./status-model.js";
 import type {
   RuntimeStatusAvailable,
   ShellBridgeHealthResult
 } from "./bridge-client.js";
 
 describe("macOS shell status model", () => {
+  it("enables only the watch action that matches the current runtime state", () => {
+    expect(createWatchControlState("running")).toEqual({
+      canStart: false,
+      canStop: true
+    });
+    expect(createWatchControlState("stopped")).toEqual({
+      canStart: true,
+      canStop: false
+    });
+    expect(createWatchControlState("error")).toEqual({
+      canStart: true,
+      canStop: false
+    });
+    expect(createWatchControlState("starting")).toEqual({
+      canStart: false,
+      canStop: true
+    });
+    expect(createWatchControlState("unknown")).toEqual({
+      canStart: true,
+      canStop: false
+    });
+  });
+
   it("summarizes runtime and index status for the panel", () => {
     const model = createShellPanelModel({
       health: availableHealth(),
@@ -58,6 +81,58 @@ describe("macOS shell status model", () => {
         detail: "Notes: 3 indexed, 1 stale, 0 failed",
         primaryPath: "file:///notes"
       }
+    });
+  });
+
+  it("summarizes source index status from runtime source metadata and document counts", () => {
+    const status = availableRuntimeStatus();
+    const model = createShellPanelModel({
+      health: availableHealth(),
+      runtimeStatus: {
+        ...status,
+        response: {
+          ...status.response,
+          result: {
+            ...status.response.result,
+            sources: [
+              {
+                id: "notes",
+                type: "local-fs",
+                name: "Personal Notes",
+                rootUri: "file:///notes",
+                status: "active"
+              }
+            ],
+            index: {
+              documents: {
+                indexed: 73,
+                stale: 0,
+                failed: 0,
+                deleted: 0
+              },
+              chunks: 620,
+              embeddings: 620,
+              sources: [
+                {
+                  sourceId: "notes",
+                  documents: {
+                    indexed: 73,
+                    stale: 0,
+                    failed: 0,
+                    deleted: 0
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    });
+
+    expect(model.sources).toEqual({
+      label: "Sources",
+      detail: "Personal Notes: 73 indexed, 0 stale, 0 failed",
+      primaryPath: "file:///notes"
     });
   });
 
@@ -146,7 +221,8 @@ function availableRuntimeStatus(): RuntimeStatusAvailable {
           readiness: {
             ready: true,
             apiKeyEnv: "OPENAI_API_KEY",
-            apiKeyPresent: true
+            apiKeyPresent: true,
+            apiKeySource: "env"
           }
         },
         storage: {
@@ -168,11 +244,12 @@ function availableRuntimeStatus(): RuntimeStatusAvailable {
           sources: [
             {
               sourceId: "notes",
-              name: "Notes",
-              indexed: 3,
-              stale: 1,
-              failed: 0,
-              deleted: 0
+              documents: {
+                indexed: 3,
+                stale: 1,
+                failed: 0,
+                deleted: 0
+              }
             }
           ]
         },

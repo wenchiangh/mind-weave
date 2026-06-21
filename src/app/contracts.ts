@@ -40,8 +40,9 @@ export type RuntimeEmbeddingStatus = {
 
 export type RuntimeProviderReadiness = {
   readonly ready: boolean;
-  readonly apiKeyEnv: string;
+  readonly apiKeyEnv?: string | undefined;
   readonly apiKeyPresent: boolean;
+  readonly apiKeySource: "config" | "env" | "missing";
 };
 
 export type RuntimeStorageStatus = {
@@ -65,7 +66,7 @@ export type RuntimeConfigEmbeddingInfo = {
   readonly provider: string;
   readonly model: string;
   readonly baseUrl: string;
-  readonly apiKeyEnv: string;
+  readonly apiKeyEnv?: string | undefined;
   readonly dimensions?: number | undefined;
 };
 

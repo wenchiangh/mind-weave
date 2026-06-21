@@ -11,7 +11,12 @@ It is not a standalone knowledge browser.
 ## Menu Bar Presence
 
 - tray/menu bar icon
-- popover or compact panel
+- ClashBar-style popover or compact panel
+- hidden Dock presence
+- hidden-by-default panel
+- tray icon click toggles panel visibility
+- panel hides on focus loss
+- undecorated utility panel without traffic-light controls
 - quit action
 
 ## Runtime Status
@@ -60,7 +65,7 @@ It is not a standalone knowledge browser.
 - open config file
 - open config folder
 - effective source summary
-- provider/model/baseUrl/apiKeyEnv
+- provider/model/baseUrl/apiKey or apiKeyEnv
 - API key presence
 
 ## Logs And Paths
@@ -71,6 +76,8 @@ It is not a standalone knowledge browser.
 ## Excluded
 
 - main window
+- Dock-first app behavior
+- normal title-bar window behavior
 - settings page
 - source editing
 - provider/model editing
@@ -91,3 +98,5 @@ It is not a standalone knowledge browser.
 Prefer a compact, utilitarian control panel.
 
 Avoid a marketing-style UI, oversized hero sections, card-heavy layouts, or a standalone knowledge-management feel. This shell should feel like a local runtime utility.
+
+The MVP shell should feel like a menu bar control surface. If implementation needs a temporary visible window for debugging, that behavior should stay outside the accepted user experience.

@@ -94,7 +94,8 @@ describe("createRuntimeFromConfigFile", () => {
         readiness: {
           ready: false,
           apiKeyEnv: "OPENAI_API_KEY",
-          apiKeyPresent: false
+          apiKeyPresent: false,
+          apiKeySource: "missing"
         }
       },
       storage: {
@@ -186,6 +187,43 @@ describe("createRuntimeFromConfigFile", () => {
         logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
       }
     });
+    await runtime.stop();
+  });
+
+  it("reports inline API key readiness without exposing the secret", async () => {
+    const { configPath } = await writeConfigFile();
+    await writeFile(configPath, `{
+      "sources": [
+        {
+          "type": "local-fs",
+          "id": "notes",
+          "name": "Notes",
+          "rootPath": "./notes"
+        }
+      ],
+      "embedding": {
+        "provider": "openai-compatible",
+        "model": "text-embedding-3-small",
+        "baseUrl": "https://api.openai.com/v1",
+        "apiKey": "inline-secret"
+      },
+      "storage": {
+        "type": "sqlite",
+        "path": "./mind-weave.sqlite"
+      }
+    }`, "utf8");
+    const runtime = await createRuntimeFromConfigFile(configPath);
+
+    const status = await runtime.getStatus();
+    const configInfo = await runtime.getConfigInfo();
+
+    expect(status.embedding.readiness).toEqual({
+      ready: true,
+      apiKeyPresent: true,
+      apiKeySource: "config"
+    });
+    expect(JSON.stringify(status)).not.toContain("inline-secret");
+    expect(JSON.stringify(configInfo)).not.toContain("inline-secret");
     await runtime.stop();
   });
 

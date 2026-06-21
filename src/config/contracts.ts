@@ -16,7 +16,8 @@ export type OpenAICompatibleEmbeddingConfig = {
   readonly provider: "openai-compatible";
   readonly model: string;
   readonly baseUrl: string;
-  readonly apiKeyEnv: string;
+  readonly apiKey?: string | undefined;
+  readonly apiKeyEnv?: string | undefined;
   readonly dimensions?: number | undefined;
   readonly batchSize?: number | undefined;
 };

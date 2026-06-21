@@ -18,6 +18,17 @@ macOS menu bar app
 
 No separate main window is required for the MVP.
 
+The intended macOS interaction model is a ClashBar-style menu bar panel:
+
+- the app lives in the menu bar, not the Dock
+- the panel is hidden by default
+- clicking the menu bar icon toggles the panel
+- the panel appears as a compact utility surface, not a normal document window
+- the panel has no title bar or traffic-light controls
+- the panel hides when it loses focus
+
+A normal visible window may be used temporarily during development diagnostics, but it is not the product shell shape and should not be the acceptance behavior.
+
 ## Product Role
 
 The P1 shell is a human control surface.
@@ -60,6 +71,8 @@ Local HTTP bound to `127.0.0.1` is acceptable as the first sidecar bridge transp
 
 The MVP should use a single compact tray panel.
 
+The panel should behave like a menu bar utility panel rather than a main app window. It should be suitable for quick status checks and short control actions, then get out of the way.
+
 Suggested sections:
 
 - Runtime
@@ -70,6 +83,16 @@ Suggested sections:
 - Actions
 
 The panel may use compact rows, small status badges, and collapsible sections if needed. It should not introduce multi-page navigation in the MVP.
+
+Window-level requirements:
+
+- use accessory-style app activation on macOS so the shell does not show as a regular Dock app
+- keep the panel hidden on launch
+- show or hide the panel from the menu bar icon
+- position the panel near the menu bar icon when tray event geometry is available
+- use an undecorated, non-resizable, always-on-top utility surface with a shadow
+- hide the panel on focus loss
+- keep any development fallback behavior explicitly separate from the product interaction model
 
 ## MVP Capabilities
 
@@ -146,7 +169,7 @@ Show:
 
 - config path
 - effective sources summary
-- provider/model/baseUrl/apiKeyEnv
+- provider/model/baseUrl/apiKey or apiKeyEnv
 - API key present/missing
 
 Actions:
@@ -217,4 +240,5 @@ P1 MVP is successful when:
 - the user can copy MCP setup command
 - the user can open config/log/source paths
 - no config editing or query playground is included
+- the shell behaves as a menu bar panel rather than a regular macOS main window
 - the app can be dogfooded against the existing local vault workflow

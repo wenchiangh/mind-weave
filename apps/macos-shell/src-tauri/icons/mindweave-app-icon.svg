@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">MindWeave App Icon</title>
+  <desc id="desc">MindWeave dark glass woven knowledge ribbon app icon.</desc>
+  <defs>
+    <linearGradient id="bg" x1="128" y1="42" x2="384" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#42636a"/>
+      <stop offset="0.44" stop-color="#16323a"/>
+      <stop offset="1" stop-color="#0b2026"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="235" cy="208" r="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e9faf7" stop-opacity="0.18"/>
+      <stop offset="0.45" stop-color="#59d8d0" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tealRibbon" x1="88" y1="152" x2="390" y2="374" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b7f5f0"/>
+      <stop offset="0.28" stop-color="#65d6d0"/>
+      <stop offset="0.68" stop-color="#3db8bf"/>
+      <stop offset="1" stop-color="#0f737b"/>
+    </linearGradient>
+    <linearGradient id="silverRibbon" x1="126" y1="110" x2="390" y2="292" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#eff9f8"/>
+      <stop offset="0.42" stop-color="#c3d1d2"/>
+      <stop offset="0.72" stop-color="#718b92"/>
+      <stop offset="1" stop-color="#e7eeee"/>
+    </linearGradient>
+    <radialGradient id="node" cx="226" cy="214" r="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff0b7"/>
+      <stop offset="0.42" stop-color="#ffb84b"/>
+      <stop offset="1" stop-color="#ec6d2d"/>
+    </radialGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#02090b" flood-opacity="0.5"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#ffffff" flood-opacity="0.28"/>
+    </filter>
+    <filter id="ribbonShadow" x="-18%" y="-24%" width="136%" height="152%">
+      <feDropShadow dx="0" dy="12" stdDeviation="8" flood-color="#031014" flood-opacity="0.42"/>
+      <feDropShadow dx="0" dy="-2" stdDeviation="2" flood-color="#ffffff" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+  <rect x="56" y="56" width="400" height="400" rx="84" fill="url(#bg)" filter="url(#softShadow)"/>
+  <rect x="66" y="66" width="380" height="380" rx="76" fill="url(#glow)"/>
+  <rect x="66" y="66" width="380" height="380" rx="76" fill="none" stroke="#dff4f2" stroke-opacity="0.22" stroke-width="4"/>
+  <g filter="url(#ribbonShadow)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M105 220C142 134 221 132 256 206C290 278 382 248 398 166" stroke="#03171b" stroke-opacity="0.45" stroke-width="66"/>
+    <path d="M104 218C144 128 220 132 256 207C291 279 384 250 399 165" stroke="url(#silverRibbon)" stroke-width="46"/>
+    <path d="M91 235C130 161 214 184 255 232C297 281 374 300 417 235" stroke="#03171b" stroke-opacity="0.48" stroke-width="74"/>
+    <path d="M91 234C130 158 215 184 256 233C298 283 376 302 418 234" stroke="url(#tealRibbon)" stroke-width="52"/>
+    <path d="M380 166C341 132 278 136 242 198C212 250 174 297 119 291" stroke="#03171b" stroke-opacity="0.38" stroke-width="58"/>
+    <path d="M379 166C340 132 278 136 243 198C212 251 175 297 120 291" stroke="url(#silverRibbon)" stroke-width="38" opacity="0.86"/>
+    <path d="M216 160C278 202 275 280 216 329C181 358 166 388 185 424" stroke="#03171b" stroke-opacity="0.42" stroke-width="62"/>
+    <path d="M216 160C278 202 275 280 216 329C181 358 166 388 185 424" stroke="url(#tealRibbon)" stroke-width="44"/>
+  </g>
+  <g stroke="#d7c7a3" stroke-width="8" stroke-linecap="round" opacity="0.86">
+    <path d="M226 226l-52 22"/>
+    <path d="M226 226l-38-48"/>
+    <path d="M226 226l45-38"/>
+    <path d="M226 226l55 38"/>
+    <path d="M226 226l16 60"/>
+  </g>
+  <g filter="url(#ribbonShadow)">
+    <circle cx="226" cy="226" r="24" fill="url(#node)" stroke="#fff2bf" stroke-width="4"/>
+    <g fill="#d9c39a" stroke="#fff0c8" stroke-width="3">
+      <circle cx="174" cy="248" r="11"/>
+      <circle cx="188" cy="178" r="10"/>
+      <circle cx="271" cy="188" r="10"/>
+      <circle cx="281" cy="264" r="10"/>
+      <circle cx="242" cy="286" r="10"/>
+    </g>
+  </g>
+</svg>

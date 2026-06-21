@@ -48,7 +48,7 @@ WU-09 should implement concrete provider classes while keeping tests network-fre
 OpenAI-compatible provider:
 
 - Uses `POST {baseUrl}/embeddings`.
-- Uses bearer token from `apiKeyEnv`.
+- Uses bearer token from `apiKey` when configured, otherwise from `apiKeyEnv`.
 - Sends `model`, `input`, and optional `dimensions`.
 - Supports document embedding in batches.
 - Supports query embedding through the same active configuration.
@@ -188,7 +188,7 @@ Validation:
 Plan:
 
 - Use injected fetch implementation for tests.
-- Read API key from env by `apiKeyEnv`.
+- Read API key from inline config first, falling back to env by `apiKeyEnv`.
 - Build `/embeddings` requests.
 - Include dimensions only when configured.
 - Map response vectors to input IDs.

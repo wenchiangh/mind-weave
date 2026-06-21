@@ -36,6 +36,37 @@ describe("validateUserConfig", () => {
     expect(validateUserConfig(validConfig)).toEqual(validConfig);
   });
 
+  it("accepts a local app config with an inline embedding API key", () => {
+    const config = {
+      ...validConfig,
+      embedding: {
+        provider: "openai-compatible",
+        model: "text-embedding-3-small",
+        baseUrl: "https://api.openai.com/v1",
+        apiKey: "test-key"
+      }
+    };
+
+    expect(validateUserConfig(config)).toEqual(config);
+  });
+
+  it("rejects embedding config without an inline API key or API key environment variable", () => {
+    const error = captureError(() => validateUserConfig({
+      ...validConfig,
+      embedding: {
+        provider: "openai-compatible",
+        model: "text-embedding-3-small",
+        baseUrl: "https://api.openai.com/v1"
+      }
+    }));
+
+    expect(isConfigError(error)).toBe(true);
+    if (isConfigError(error)) {
+      expect(error.code).toBe("CONFIG_SCHEMA_INVALID");
+      expect(error.issues[0]?.path).toBe("embedding");
+    }
+  });
+
   it("rejects missing sources", () => {
     const error = captureError(() => validateUserConfig({
       embedding: validConfig.embedding,

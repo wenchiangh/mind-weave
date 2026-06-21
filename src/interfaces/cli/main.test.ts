@@ -117,7 +117,8 @@ describe("runCli", () => {
         readiness: {
           ready: false,
           apiKeyEnv: "OPENAI_API_KEY",
-          apiKeyPresent: false
+          apiKeyPresent: false,
+          apiKeySource: "missing" as const
         }
       },
       storage: {
@@ -358,7 +359,8 @@ class CapturingRuntime implements AppRuntime {
         readiness: {
           ready: false,
           apiKeyEnv: "OPENAI_API_KEY",
-          apiKeyPresent: false
+          apiKeyPresent: false,
+          apiKeySource: "missing" as const
         }
       },
       storage: {

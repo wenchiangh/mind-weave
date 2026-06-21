@@ -143,6 +143,61 @@ describe("OpenAICompatibleEmbeddingProvider", () => {
     });
   });
 
+  it("prefers an inline API key over the configured API key environment variable", async () => {
+    const mock = createFetch([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          data: [
+            { index: 0, embedding: [1, 0] }
+          ]
+        }
+      }
+    ]);
+    const provider = new OpenAICompatibleEmbeddingProvider({
+      model: "model",
+      baseUrl: "https://example.test/v1",
+      apiKey: "inline-key",
+      apiKeyEnv: "OPENAI_API_KEY",
+      fetch: mock.fetch,
+      env: {
+        OPENAI_API_KEY: "env-key"
+      }
+    });
+
+    await provider.embedQuery("hello");
+
+    expect(mock.calls[0]?.init.headers.authorization).toBe("Bearer inline-key");
+  });
+
+  it("uses the configured API key environment variable when no inline key is set", async () => {
+    const mock = createFetch([
+      {
+        ok: true,
+        status: 200,
+        payload: {
+          data: [
+            { index: 0, embedding: [1, 0] }
+          ]
+        }
+      }
+    ]);
+    const provider = new OpenAICompatibleEmbeddingProvider({
+      model: "model",
+      baseUrl: "https://example.test/v1",
+      apiKeyEnv: "OPENAI_API_KEY",
+      fetch: mock.fetch,
+      env: {
+        OPENAI_API_KEY: "env-key"
+      }
+    });
+
+    await provider.embedQuery("hello");
+
+    expect(mock.calls[0]?.init.headers.authorization).toBe("Bearer env-key");
+  });
+
   it("batches document embedding requests and preserves output order", async () => {
     const mock = createFetch([
       {

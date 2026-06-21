@@ -20,10 +20,16 @@ const embeddingSchema = z.object({
   provider: z.literal("openai-compatible"),
   model: nonEmptyString,
   baseUrl: nonEmptyString,
-  apiKeyEnv: nonEmptyString,
+  apiKey: nonEmptyString.optional(),
+  apiKeyEnv: nonEmptyString.optional(),
   dimensions: z.number().int().positive().optional(),
   batchSize: z.number().int().positive().optional()
-}).strict();
+}).strict().refine((embedding) =>
+  embedding.apiKey !== undefined || embedding.apiKeyEnv !== undefined,
+{
+  message: "Embedding config must include apiKey or apiKeyEnv.",
+  path: []
+});
 
 const storageSchema = z.object({
   type: z.literal("sqlite"),

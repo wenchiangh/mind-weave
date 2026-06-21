@@ -673,7 +673,7 @@ Configuration:
 - `provider`: `openai-compatible`
 - `model`
 - `baseUrl`
-- `apiKeyEnv`
+- `apiKey` for the local desktop workflow, or `apiKeyEnv` for CLI-oriented environments
 - `dimensions` when needed
 - `batchSize`
 
