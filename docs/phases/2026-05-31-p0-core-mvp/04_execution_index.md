@@ -213,7 +213,7 @@ Status tags track current phase:
 
 ## WU-07 SQLite Metadata Storage
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/07-sqlite-metadata-storage.md`
 - Depends on: WU-01, WU-05
 - Design refs:
@@ -225,7 +225,10 @@ Status tags track current phase:
 - Observable result:
   - Storage can create/open a database, persist effective sources, upsert documents, replace chunks and embedding metadata, mark deletes, and list source/document status.
 - Validation summary:
-  - Temporary database integration tests cover schema creation, incompatible schema marker failure, source mirror rebuild, document registry, chunk replacement, and soft delete query exclusion metadata.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Temporary database integration tests cover schema creation, compatible reopen, incompatible schema marker failure, source mirror rebuild, document registry, soft delete exclusion from active listing, chunk replacement, embedding metadata replacement, and index config roundtrip.
+  - Storage boundary tests prove the storage module does not import config, app, CLI, source provider implementation, processors, indexing, embeddings, or query modules.
 - Completion criteria:
   - Storage exposes domain operations instead of raw SQL to other modules.
   - Typecheck and tests pass.

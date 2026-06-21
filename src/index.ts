@@ -70,3 +70,20 @@ export type {
   ProcessableDocument,
   ProcessedChunk
 } from "./processors/index.js";
+export {
+  SQLiteStorage,
+  StorageError,
+  isStorageError
+} from "./storage/index.js";
+export type {
+  ChunkEmbeddingStore,
+  DocumentRegistryStore,
+  IndexConfigStore,
+  SourceStatusStore,
+  StorageErrorCode,
+  StorageErrorIssue,
+  StoredChunk,
+  StoredDocument,
+  StoredEmbedding,
+  StoredSource
+} from "./storage/index.js";
