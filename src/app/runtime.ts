@@ -36,10 +36,12 @@ import type { SQLiteStorageOptions } from "../storage/index.js";
 import type {
   AppRuntime,
   RuntimeHealth,
+  RuntimeConfigInfo,
   RuntimeScanOptions,
   RuntimeScanProgressEvent,
   RuntimeSourceInspection,
-  RuntimeStatus
+  RuntimeStatus,
+  RuntimeWatchStatus
 } from "./contracts.js";
 
 export type RuntimeDependencyOptions = {
@@ -48,6 +50,7 @@ export type RuntimeDependencyOptions = {
   readonly sourceProvider?: SourceProvider | undefined;
   readonly createWatcher?: ((source: SourceDefinition) => SourceWatcher) | undefined;
   readonly logger?: Logger | undefined;
+  readonly configPath?: string | undefined;
 };
 
 export function getRuntimeHealth(): RuntimeHealth {
@@ -61,7 +64,10 @@ export async function createRuntimeFromConfigFile(
   configPath: string,
   options: RuntimeDependencyOptions = {}
 ): Promise<AppRuntime> {
-  return createRuntime(await loadEffectiveConfigFile(configPath), options);
+  return createRuntime(await loadEffectiveConfigFile(configPath), {
+    ...options,
+    configPath
+  });
 }
 
 export function createRuntime(
@@ -84,8 +90,13 @@ class ConfiguredAppRuntime implements AppRuntime {
   private readonly queryService: CoreQueryService;
   private readonly mcpHandlers: McpToolHandlers;
   private readonly createWatcher: (source: SourceDefinition) => SourceWatcher;
+  private readonly configPath: string | undefined;
   private readonly logger: Logger;
   private readonly watchers: SourceWatcher[] = [];
+  private watchStatus: RuntimeWatchStatus = {
+    status: "stopped",
+    watcherCount: 0
+  };
 
   constructor(
     private readonly config: EffectiveConfig,
@@ -100,6 +111,7 @@ class ConfiguredAppRuntime implements AppRuntime {
     this.logger = options.logger ?? new FileLogger(
       createDefaultLogFilePath(config.storage.path)
     );
+    this.configPath = options.configPath;
     this.ownsStorage = options.storage === undefined;
     this.sourceProvider = options.sourceProvider ?? new LocalFsSourceProvider();
     this.sourceInspector = isSourceInspector(this.sourceProvider)
@@ -143,6 +155,7 @@ class ConfiguredAppRuntime implements AppRuntime {
   }
 
   async getStatus(): Promise<RuntimeStatus> {
+    const configInfo = await this.getConfigInfo();
     return {
       name: "mind-weave-core",
       status: "configured",
@@ -154,6 +167,7 @@ class ConfiguredAppRuntime implements AppRuntime {
         rootUri: source.rootUri,
         status: source.status
       })),
+      config: configInfo,
       embedding: {
         provider: this.config.embedding.provider,
         model: this.config.embedding.model,
@@ -171,10 +185,36 @@ class ConfiguredAppRuntime implements AppRuntime {
         documents: await this.storage.countDocumentsByStatus(),
         ...await this.storage.readIndexStats()
       },
-      mcp: {
-        enabled: this.config.mcp.enabled
-      },
+      watch: this.watchStatus,
+      mcp: this.createMcpStatus(),
       unavailableCapabilities: []
+    };
+  }
+
+  async getConfigInfo(): Promise<RuntimeConfigInfo> {
+    return {
+      ...(this.configPath === undefined ? {} : { path: this.configPath }),
+      sources: this.config.sourceDefinitions.map((source) => ({
+        id: source.id,
+        type: source.type,
+        name: source.name,
+        rootUri: source.rootUri,
+        status: source.status
+      })),
+      embedding: {
+        provider: this.config.embedding.provider,
+        model: this.config.embedding.model,
+        baseUrl: this.config.embedding.baseUrl,
+        apiKeyEnv: this.config.embedding.apiKeyEnv,
+        dimensions: this.config.embedding.dimensions
+      },
+      storage: {
+        type: this.config.storage.type,
+        path: this.config.storage.path
+      },
+      observability: {
+        logPath: this.logger.logPath
+      }
     };
   }
 
@@ -183,14 +223,69 @@ class ConfiguredAppRuntime implements AppRuntime {
       sourceCount: this.config.sourceDefinitions.length
     });
     await this.scan();
-    for (const source of this.config.sourceDefinitions) {
-      const watcher = this.createWatcher(source);
-      await watcher.start();
-      this.watchers.push(watcher);
-    }
+    await this.startWatching();
     await this.logInfo("runtime.started", {
       watcherCount: this.watchers.length
     });
+  }
+
+  async startWatching(): Promise<void> {
+    if (this.watchStatus.status === "running") {
+      return;
+    }
+
+    this.watchStatus = {
+      status: "starting",
+      watcherCount: this.watchers.length
+    };
+
+    try {
+      for (const source of this.config.sourceDefinitions) {
+        const watcher = this.createWatcher(source);
+        await watcher.start();
+        this.watchers.push(watcher);
+      }
+
+      this.watchStatus = {
+        status: "running",
+        watcherCount: this.watchers.length
+      };
+    } catch (error) {
+      while (this.watchers.length > 0) {
+        await this.watchers.pop()?.stop();
+      }
+
+      this.watchStatus = {
+        status: "error",
+        watcherCount: 0,
+        lastError: errorMessage(error)
+      };
+      throw error;
+    }
+  }
+
+  async stopWatching(): Promise<void> {
+    if (this.watchers.length === 0) {
+      this.watchStatus = {
+        status: "stopped",
+        watcherCount: 0
+      };
+      return;
+    }
+
+    this.watchStatus = {
+      status: "stopping",
+      watcherCount: this.watchers.length
+    };
+
+    while (this.watchers.length > 0) {
+      await this.watchers.pop()?.stop();
+    }
+
+    this.watchStatus = {
+      status: "stopped",
+      watcherCount: 0
+    };
   }
 
   async scan(options: RuntimeScanOptions = {}): Promise<void> {
@@ -317,9 +412,7 @@ class ConfiguredAppRuntime implements AppRuntime {
   }
 
   async stop(): Promise<void> {
-    while (this.watchers.length > 0) {
-      await this.watchers.pop()?.stop();
-    }
+    await this.stopWatching();
 
     if (this.ownsStorage) {
       this.storage.close();
@@ -358,6 +451,19 @@ class ConfiguredAppRuntime implements AppRuntime {
     } catch {
       // Logging should not make runtime operations fail.
     }
+  }
+
+  private createMcpStatus() {
+    const enabled = this.config.mcp.enabled;
+    return {
+      enabled,
+      access: enabled ? "available" as const : "disabled" as const,
+      transport: "stdio" as const,
+      startStopSupported: false as const,
+      ...(enabled && this.configPath !== undefined ? {
+        setupCommand: `mindweave mcp --config ${this.configPath}`
+      } : {})
+    };
   }
 }
 

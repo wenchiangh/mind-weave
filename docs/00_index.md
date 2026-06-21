@@ -33,6 +33,13 @@ This directory separates stable project knowledge from phase-specific execution 
 - [P0.8 Retrieval Result Metadata](./phases/2026-06-21-p0-8-retrieval-result-metadata/00_spec.md): focused runtime contract hardening for source-relative path, current chunk position, and Markdown heading metadata.
   - [Implementation Plan](./phases/2026-06-21-p0-8-retrieval-result-metadata/01_implementation_plan.md)
   - [Execution Index](./phases/2026-06-21-p0-8-retrieval-result-metadata/02_execution_index.md)
+- [P0.9 Runtime SDK and Shell Bridge Boundary](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/00_spec.md): boundary-definition phase for the Core runtime SDK, future Tauri sidecar bridge, and human-control versus agent-access surfaces.
+  - [Boundary Design](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/01_boundary_design.md)
+  - [Open Questions](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/02_open_questions.md)
+  - [Execution Index](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/03_execution_index.md)
+  - [Runtime SDK Surface Audit](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/04_runtime_sdk_surface_audit.md)
+  - [Runtime SDK Boundary Plan](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/05_runtime_sdk_boundary_plan.md)
+  - [Shell Bridge Transport Decision](./phases/2026-06-21-p0-9-runtime-sdk-and-shell-bridge-boundary/06_bridge_transport_decision.md)
 - [P1 macOS Tauri Shell](./phases/p1-macos-tauri-shell/00_direction.md): future product shell direction, intentionally kept thin until Core MVP is validated.
 
 Phase directories contain scope, implementation planning, and open questions for a specific stage. They are expected to evolve or be superseded as the project moves forward.

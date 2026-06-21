@@ -6,9 +6,12 @@ import { describe, expect, it } from "vitest";
 import type { Logger } from "../observability/index.js";
 import { isAppError } from "./errors.js";
 import {
+  createRuntime,
   createRuntimeFromConfigFile,
   getRuntimeHealth
 } from "./runtime.js";
+import type { EffectiveConfig } from "../config/contracts.js";
+import type { SourceDefinition, SourceWatcher } from "../sources/contracts.js";
 
 async function writeConfigFile(): Promise<{
   readonly configPath: string;
@@ -101,6 +104,32 @@ describe("createRuntimeFromConfigFile", () => {
       observability: {
         logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
       },
+      config: {
+        path: configPath,
+        sources: [
+          {
+            id: "notes",
+            type: "local-fs",
+            name: "Notes",
+            rootUri: pathToFileURL(notesPath).href,
+            status: "active"
+          }
+        ],
+        embedding: {
+          provider: "openai-compatible",
+          model: "text-embedding-3-small",
+          baseUrl: "https://api.openai.com/v1",
+          apiKeyEnv: "OPENAI_API_KEY",
+          dimensions: undefined
+        },
+        storage: {
+          type: "sqlite",
+          path: path.join(path.dirname(configPath), "mind-weave.sqlite")
+        },
+        observability: {
+          logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
+        }
+      },
       index: {
         documents: {
           indexed: 0,
@@ -112,11 +141,52 @@ describe("createRuntimeFromConfigFile", () => {
         embeddings: 0,
         sources: []
       },
+      watch: {
+        status: "stopped",
+        watcherCount: 0
+      },
       mcp: {
-        enabled: true
+        enabled: true,
+        access: "available",
+        transport: "stdio",
+        startStopSupported: false,
+        setupCommand: `mindweave mcp --config ${configPath}`
       },
       unavailableCapabilities: []
     });
+  });
+
+  it("exposes read-only config info for shell adapters without secrets", async () => {
+    const { configPath, notesPath } = await writeConfigFile();
+    const runtime = await createRuntimeFromConfigFile(configPath);
+
+    await expect(runtime.getConfigInfo()).resolves.toEqual({
+      path: configPath,
+      sources: [
+        {
+          id: "notes",
+          type: "local-fs",
+          name: "Notes",
+          rootUri: pathToFileURL(notesPath).href,
+          status: "active"
+        }
+      ],
+      embedding: {
+        provider: "openai-compatible",
+        model: "text-embedding-3-small",
+        baseUrl: "https://api.openai.com/v1",
+        apiKeyEnv: "OPENAI_API_KEY",
+        dimensions: undefined
+      },
+      storage: {
+        type: "sqlite",
+        path: path.join(path.dirname(configPath), "mind-weave.sqlite")
+      },
+      observability: {
+        logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
+      }
+    });
+    await runtime.stop();
   });
 
   it("inspects configured sources without indexing or calling embeddings", async () => {
@@ -161,6 +231,77 @@ describe("createRuntimeFromConfigFile", () => {
     const runtime = await createRuntimeFromConfigFile(configPath);
 
     await expect(runtime.scan()).resolves.toBeUndefined();
+    await runtime.stop();
+  });
+
+  it("starts and stops watchers independently from scan and MCP", async () => {
+    const { configPath } = await writeConfigFile();
+    const watchers: CapturingWatcher[] = [];
+    const runtime = await createRuntimeFromConfigFile(configPath, {
+      createWatcher: (source) => {
+        const watcher = new CapturingWatcher(source);
+        watchers.push(watcher);
+        return watcher;
+      }
+    });
+
+    await expect(runtime.getStatus()).resolves.toMatchObject({
+      watch: {
+        status: "stopped",
+        watcherCount: 0
+      },
+      mcp: {
+        access: "available",
+        startStopSupported: false
+      }
+    });
+
+    await runtime.startWatching();
+
+    expect(watchers).toHaveLength(1);
+    expect(watchers[0]?.startCalls).toBe(1);
+    await expect(runtime.getStatus()).resolves.toMatchObject({
+      watch: {
+        status: "running",
+        watcherCount: 1
+      },
+      index: {
+        documents: {
+          indexed: 0
+        }
+      }
+    });
+
+    await runtime.stopWatching();
+
+    expect(watchers[0]?.stopCalls).toBe(1);
+    await expect(runtime.getStatus()).resolves.toMatchObject({
+      watch: {
+        status: "stopped",
+        watcherCount: 0
+      }
+    });
+    await runtime.stop();
+  });
+
+  it("reports watcher start failures without changing MCP access status", async () => {
+    const { configPath } = await writeConfigFile();
+    const runtime = await createRuntimeFromConfigFile(configPath, {
+      createWatcher: () => new FailingWatcher("watch denied")
+    });
+
+    await expect(runtime.startWatching()).rejects.toThrow("watch denied");
+    await expect(runtime.getStatus()).resolves.toMatchObject({
+      watch: {
+        status: "error",
+        watcherCount: 0,
+        lastError: "watch denied"
+      },
+      mcp: {
+        access: "available",
+        startStopSupported: false
+      }
+    });
     await runtime.stop();
   });
 
@@ -272,6 +413,25 @@ describe("createRuntimeFromConfigFile", () => {
   });
 });
 
+describe("createRuntime", () => {
+  it("omits config path when runtime is created from an in-memory config", async () => {
+    const runtime = createRuntime(createEffectiveConfig());
+
+    await expect(runtime.getConfigInfo()).resolves.toMatchObject({
+      sources: [
+        {
+          id: "notes"
+        }
+      ],
+      storage: {
+        path: "/tmp/mind-weave.sqlite"
+      }
+    });
+    await expect(runtime.getConfigInfo()).resolves.not.toHaveProperty("path");
+    await runtime.stop();
+  });
+});
+
 class CapturingLogger implements Logger {
   readonly events: Array<{
     readonly level: "info" | "error";
@@ -294,4 +454,57 @@ class CapturingLogger implements Logger {
       ...metadata
     });
   }
+}
+
+class CapturingWatcher implements SourceWatcher {
+  startCalls = 0;
+  stopCalls = 0;
+
+  constructor(readonly source: SourceDefinition) {}
+
+  async start(): Promise<void> {
+    this.startCalls += 1;
+  }
+
+  async stop(): Promise<void> {
+    this.stopCalls += 1;
+  }
+}
+
+class FailingWatcher implements SourceWatcher {
+  constructor(private readonly message: string) {}
+
+  async start(): Promise<void> {
+    throw new Error(this.message);
+  }
+
+  async stop(): Promise<void> {}
+}
+
+function createEffectiveConfig(): EffectiveConfig {
+  return {
+    sources: [],
+    sourceDefinitions: [
+      {
+        id: "notes",
+        type: "local-fs",
+        name: "Notes",
+        rootUri: "file:///notes",
+        status: "active"
+      }
+    ],
+    embedding: {
+      provider: "openai-compatible",
+      model: "text-embedding-3-small",
+      baseUrl: "https://api.openai.com/v1",
+      apiKeyEnv: "OPENAI_API_KEY"
+    },
+    storage: {
+      type: "sqlite",
+      path: "/tmp/mind-weave.sqlite"
+    },
+    mcp: {
+      enabled: true
+    }
+  };
 }

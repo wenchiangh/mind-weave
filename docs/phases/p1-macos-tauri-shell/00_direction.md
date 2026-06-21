@@ -36,7 +36,9 @@ Tauri taskbar app
   -> Tauri UI communicates with Core through local IPC, HTTP, or stdio
 ```
 
-The exact communication mechanism should be decided after Core exposes enough lifecycle, status, and configuration behavior to evaluate the trade-offs.
+The stable dependency should be the Core TypeScript Runtime SDK / AppRuntime contract, not a CLI command or an HTTP route contract. The Node.js sidecar bridge belongs to the Tauri shell adapter layer and may expose local IPC, HTTP, or stdio to the Tauri frontend.
+
+The exact communication mechanism should be decided after the Runtime SDK and shell bridge boundary are audited and documented.
 
 ## Core Dependency
 
@@ -47,11 +49,21 @@ P1 depends on Core decisions from P0:
 - Source status model.
 - Document/index status model.
 - Log file location.
+- Runtime SDK / AppRuntime operation surface.
 - Core start/stop behavior.
-- MCP server lifecycle.
-- Whether Core exposes a local control API.
+- Watch start/stop/status behavior.
+- MCP access/setup/status behavior.
+- Sidecar bridge transport choice.
 
 These should not be guessed too early. The shell should adapt to the validated Core shape.
+
+The P0.9 boundary decision is:
+
+- Core exposes a TypeScript Runtime SDK / AppRuntime surface.
+- CLI imports that SDK directly.
+- The macOS shell owns a Node.js sidecar bridge because Tauri cannot naturally call TypeScript Core in-process.
+- Local HTTP is an acceptable first bridge transport candidate, but it is not the stable core contract.
+- Source configuration editing remains deferred for the first shell.
 
 ## Initial UI Surface
 
@@ -60,12 +72,16 @@ The first UI should stay small:
 - Tray menu.
 - Source list.
 - Index status summary.
-- Add/remove/disable source controls.
+- Read-only config summary.
+- Open config file or folder.
+- Scan trigger and progress display.
+- Watch start/stop/status.
+- MCP setup/status display.
 - Open file action where a source path is available.
 - Open logs action.
 - Basic error indicator.
 
-Manual query playground and chunk preview are not part of the initial shell direction. They may be reconsidered after the agent-facing query loop is validated.
+Source add/remove/disable controls, manual query playground, and chunk preview are not part of the initial shell direction. They may be reconsidered after the runtime shell boundary and first status/control shell are validated.
 
 ## Future Spec Trigger
 
@@ -84,7 +100,7 @@ At that point, the P1 spec should define:
 - Sidecar packaging.
 - Tauri-to-Core communication.
 - UI state model.
-- Source configuration flow.
+- Read-only config display and open-config actions.
 - Tray behavior.
 - Error and log presentation.
 - macOS distribution assumptions.

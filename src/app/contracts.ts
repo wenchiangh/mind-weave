@@ -16,10 +16,12 @@ export type RuntimeStatus = {
   readonly status: "configured";
   readonly sourceCount: number;
   readonly sources: readonly RuntimeSourceStatus[];
+  readonly config: RuntimeConfigInfo;
   readonly embedding: RuntimeEmbeddingStatus;
   readonly storage: RuntimeStorageStatus;
   readonly observability: RuntimeObservabilityStatus;
   readonly index: RuntimeIndexStatus;
+  readonly watch: RuntimeWatchStatus;
   readonly mcp: RuntimeMcpStatus;
   readonly unavailableCapabilities: readonly RuntimeCapability[];
 };
@@ -51,6 +53,22 @@ export type RuntimeObservabilityStatus = {
   readonly logPath?: string | undefined;
 };
 
+export type RuntimeConfigInfo = {
+  readonly path?: string | undefined;
+  readonly sources: readonly RuntimeSourceStatus[];
+  readonly embedding: RuntimeConfigEmbeddingInfo;
+  readonly storage: RuntimeStorageStatus;
+  readonly observability: RuntimeObservabilityStatus;
+};
+
+export type RuntimeConfigEmbeddingInfo = {
+  readonly provider: string;
+  readonly model: string;
+  readonly baseUrl: string;
+  readonly apiKeyEnv: string;
+  readonly dimensions?: number | undefined;
+};
+
 export type RuntimeIndexStatus = {
   readonly documents: DocumentStatusCounts;
   readonly chunks: number;
@@ -58,8 +76,18 @@ export type RuntimeIndexStatus = {
   readonly sources: readonly SourceDocumentStatusCounts[];
 };
 
+export type RuntimeWatchStatus = {
+  readonly status: "stopped" | "starting" | "running" | "stopping" | "error";
+  readonly watcherCount: number;
+  readonly lastError?: string | undefined;
+};
+
 export type RuntimeMcpStatus = {
   readonly enabled: boolean;
+  readonly access: "available" | "disabled";
+  readonly transport: "stdio";
+  readonly startStopSupported: false;
+  readonly setupCommand?: string | undefined;
 };
 
 export type RuntimeCapability = "start" | "scan" | "query";
@@ -119,7 +147,10 @@ export type AppErrorIssue = {
 export interface AppRuntime {
   getHealth(): RuntimeHealth;
   getStatus(): Promise<RuntimeStatus>;
+  getConfigInfo(): Promise<RuntimeConfigInfo>;
   start(): Promise<void>;
+  startWatching(): Promise<void>;
+  stopWatching(): Promise<void>;
   scan(options?: RuntimeScanOptions): Promise<void>;
   inspectSources(): Promise<RuntimeSourceInspectionReport>;
   query(input: string): Promise<readonly QueryResult[]>;

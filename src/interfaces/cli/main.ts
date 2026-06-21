@@ -69,7 +69,7 @@ export async function runCli(
     }
 
     if (command.name === "watch") {
-      await runtime.start();
+      await runtime.startWatching();
       return 0;
     }
 

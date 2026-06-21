@@ -127,6 +127,31 @@ describe("runCli", () => {
       observability: {
         logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
       },
+      config: {
+        path: configPath,
+        sources: [
+          {
+            id: "notes",
+            type: "local-fs",
+            name: "Notes",
+            rootUri: pathToFileURL(notesPath).href,
+            status: "active"
+          }
+        ],
+        embedding: {
+          provider: "openai-compatible",
+          model: "text-embedding-3-small",
+          baseUrl: "https://api.openai.com/v1",
+          apiKeyEnv: "OPENAI_API_KEY"
+        },
+        storage: {
+          type: "sqlite",
+          path: path.join(path.dirname(configPath), "mind-weave.sqlite")
+        },
+        observability: {
+          logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
+        }
+      },
       index: {
         documents: {
           indexed: 0,
@@ -138,8 +163,15 @@ describe("runCli", () => {
         embeddings: 0,
         sources: []
       },
+      watch: {
+        status: "stopped",
+        watcherCount: 0
+      },
       mcp: {
-        enabled: false
+        enabled: false,
+        access: "disabled",
+        transport: "stdio",
+        startStopSupported: false
       },
       unavailableCapabilities: []
     });
@@ -244,7 +276,7 @@ describe("runCli", () => {
     expect(runtime.mcpHandlerCalls).toBe(1);
   });
 
-  it("routes watch to runtime start without serving MCP", async () => {
+  it("routes watch to explicit runtime watch start without serving MCP", async () => {
     const runtime = new CapturingRuntime(createNoopMcpToolHandlers());
     const servedHandlers: McpToolHandlers[] = [];
 
@@ -257,7 +289,8 @@ describe("runCli", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.writes).toEqual([]);
-    expect(runtime.startCalls).toBe(1);
+    expect(runtime.startCalls).toBe(0);
+    expect(runtime.startWatchingCalls).toBe(1);
     expect(runtime.scanCalls).toBe(0);
     expect(runtime.mcpHandlerCalls).toBe(0);
     expect(servedHandlers).toEqual([]);
@@ -300,6 +333,8 @@ describe("runCli", () => {
 class CapturingRuntime implements AppRuntime {
   scanCalls = 0;
   startCalls = 0;
+  startWatchingCalls = 0;
+  stopWatchingCalls = 0;
   mcpHandlerCalls = 0;
 
   constructor(private readonly handlers: McpToolHandlers) {}
@@ -333,6 +368,22 @@ class CapturingRuntime implements AppRuntime {
       observability: {
         logPath: "mindweave.log"
       },
+      config: {
+        sources: [],
+        embedding: {
+          provider: "openai-compatible",
+          model: "text-embedding-3-small",
+          baseUrl: "https://api.openai.com/v1",
+          apiKeyEnv: "OPENAI_API_KEY"
+        },
+        storage: {
+          type: "sqlite",
+          path: "mind-weave.sqlite"
+        },
+        observability: {
+          logPath: "mindweave.log"
+        }
+      },
       index: {
         documents: {
           indexed: 0,
@@ -344,8 +395,15 @@ class CapturingRuntime implements AppRuntime {
         embeddings: 0,
         sources: []
       },
+      watch: {
+        status: "stopped" as const,
+        watcherCount: 0
+      },
       mcp: {
-        enabled: true
+        enabled: true,
+        access: "available" as const,
+        transport: "stdio" as const,
+        startStopSupported: false as const
       },
       unavailableCapabilities: []
     });
@@ -354,6 +412,35 @@ class CapturingRuntime implements AppRuntime {
   async start(): Promise<void> {
     this.startCalls += 1;
     this.calls.push("runtime.start");
+  }
+
+  async startWatching(): Promise<void> {
+    this.startWatchingCalls += 1;
+    this.calls.push("runtime.startWatching");
+  }
+
+  async stopWatching(): Promise<void> {
+    this.stopWatchingCalls += 1;
+    this.calls.push("runtime.stopWatching");
+  }
+
+  getConfigInfo() {
+    return Promise.resolve({
+      sources: [],
+      embedding: {
+        provider: "openai-compatible",
+        model: "text-embedding-3-small",
+        baseUrl: "https://api.openai.com/v1",
+        apiKeyEnv: "OPENAI_API_KEY"
+      },
+      storage: {
+        type: "sqlite",
+        path: "mind-weave.sqlite"
+      },
+      observability: {
+        logPath: "mindweave.log"
+      }
+    });
   }
 
   async scan(options: Parameters<AppRuntime["scan"]>[0]): Promise<void> {
