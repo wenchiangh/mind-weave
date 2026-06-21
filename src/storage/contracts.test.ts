@@ -43,7 +43,20 @@ describe("storage capability contracts", () => {
       listDocumentChunks: async () => []
     };
     const vectors: VectorSearchStore = {
-      searchVectors: async () => [{ chunkId: "chunk-1", distance: 0.1, score: 0.9 }]
+      searchVectors: async () => [{
+        chunkId: "chunk-1",
+        documentId: "doc-1",
+        sourceId: "source-1",
+        sourceName: "Vault",
+        uri: "file:///vault/note.md",
+        text: "Relevant chunk",
+        distance: 0.1,
+        score: 0.9,
+        documentStatus: "indexed",
+        sourceStatus: "active",
+        sourceUpdatedAt: 1_717_171_700_000,
+        indexedAt: 1_717_171_717_000
+      }]
     };
     const indexConfig: IndexConfigStore = {
       readIndexConfig: async () => ({ model: "fake" }),
@@ -55,7 +68,20 @@ describe("storage capability contracts", () => {
     await expect(chunks.replaceDocumentChunks("doc-1", [], [])).resolves.toBeUndefined();
     await expect(chunks.listDocumentChunks("doc-1")).resolves.toEqual([]);
     await expect(vectors.searchVectors({ vector: [1, 0, 0], limit: 1 })).resolves.toEqual([
-      { chunkId: "chunk-1", distance: 0.1, score: 0.9 }
+      {
+        chunkId: "chunk-1",
+        documentId: "doc-1",
+        sourceId: "source-1",
+        sourceName: "Vault",
+        uri: "file:///vault/note.md",
+        text: "Relevant chunk",
+        distance: 0.1,
+        score: 0.9,
+        documentStatus: "indexed",
+        sourceStatus: "active",
+        sourceUpdatedAt: 1_717_171_700_000,
+        indexedAt: 1_717_171_717_000
+      }
     ]);
     await expect(indexConfig.readIndexConfig()).resolves.toEqual({ model: "fake" });
   });

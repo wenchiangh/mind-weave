@@ -353,7 +353,7 @@ Status tags track current phase:
 
 ## WU-13 Query Service
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/13-query-service.md`
 - Depends on: WU-08, WU-09, WU-11, WU-12
 - Design refs:
@@ -366,7 +366,10 @@ Status tags track current phase:
 - Observable result:
   - Given an indexed fixture database, QueryService returns ordered chunk results with normalized scores and traceability metadata.
 - Validation summary:
-  - Tests cover default limit, max limit, include/exclude source filters, file type filters, score threshold, stale document visibility, failed/deleted exclusion, and provider errors.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - QueryService tests cover default limit, max limit validation, include/exclude source filters, file type filters, score threshold forwarding, provider errors, and SQLite integration.
+  - SQLite storage tests cover stale document visibility, failed/deleted exclusion, disabled source exclusion, source filters, file type filters, and score threshold behavior.
 - Completion criteria:
   - QueryService does not post-filter result sets in application code.
   - Typecheck and tests pass.

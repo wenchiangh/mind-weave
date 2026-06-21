@@ -89,8 +89,20 @@ export type {
   StoredDocument,
   StoredEmbedding,
   StoredEmbeddingVector,
-  StoredSource
+  StoredSource,
+  VectorSearchInput,
+  VectorSearchResult,
+  VectorSearchStore
 } from "./storage/index.js";
+export {
+  CoreQueryService
+} from "./query/index.js";
+export type {
+  CoreQueryServiceOptions,
+  QueryInput,
+  QueryResult,
+  QueryService
+} from "./query/index.js";
 export {
   EmbeddingProviderError,
   FakeEmbeddingProvider,

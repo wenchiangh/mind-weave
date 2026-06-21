@@ -243,8 +243,17 @@ describe("SQLiteStorage", () => {
     ]);
     expect(results[0]).toMatchObject({
       chunkId: "doc_near_chunk_0",
+      documentId: "doc_near",
+      sourceId: "source_a",
+      sourceName: "Source source_a",
+      uri: "file:///tmp/source_a/doc_near.md",
+      text: "doc_near",
       distance: 0,
-      score: 1
+      score: 1,
+      documentStatus: "indexed",
+      sourceStatus: "active",
+      sourceUpdatedAt: 1000,
+      indexedAt: 2000
     });
     expect(results.every((result) => result.score > 0 && result.score <= 1)).toBe(true);
 

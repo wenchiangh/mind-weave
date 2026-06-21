@@ -70,8 +70,18 @@ export type VectorSearchInput = {
 
 export type VectorSearchResult = {
   readonly chunkId: EntityId;
+  readonly documentId: EntityId;
+  readonly sourceId: EntityId;
+  readonly sourceName: string;
+  readonly uri: UriString;
+  readonly text: string;
   readonly distance: number;
   readonly score: number;
+  readonly documentStatus: StoredDocument["status"];
+  readonly sourceStatus: StoredSource["status"];
+  readonly sourceUpdatedAt: UnixMilliseconds;
+  readonly indexedAt: UnixMilliseconds;
+  readonly metadata?: MetadataRecord;
 };
 
 export interface SourceStatusStore {

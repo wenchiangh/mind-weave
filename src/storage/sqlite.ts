@@ -452,8 +452,18 @@ export class SQLiteStorage implements
       )
       SELECT
         chunks.chunk_id AS chunkId,
+        chunks.document_id AS documentId,
+        chunks.source_id AS sourceId,
+        sources.name AS sourceName,
+        documents.uri AS uri,
+        chunks.text AS text,
         knn.distance AS distance,
-        1.0 / (1.0 + knn.distance) AS score
+        1.0 / (1.0 + knn.distance) AS score,
+        documents.status AS documentStatus,
+        sources.status AS sourceStatus,
+        documents.source_updated_at AS sourceUpdatedAt,
+        COALESCE(documents.indexed_at, documents.source_updated_at) AS indexedAt,
+        chunks.metadata_json AS metadataJson
       FROM knn
       JOIN embeddings ON embeddings.embedding_id = knn.embedding_id
       JOIN chunks ON chunks.chunk_id = embeddings.chunk_id
@@ -464,14 +474,34 @@ export class SQLiteStorage implements
       LIMIT @limit
     `).all(parameters) as Array<{
       readonly chunkId: string;
+      readonly documentId: string;
+      readonly sourceId: string;
+      readonly sourceName: string;
+      readonly uri: string;
+      readonly text: string;
       readonly distance: number;
       readonly score: number;
+      readonly documentStatus: StoredDocument["status"];
+      readonly sourceStatus: StoredSource["status"];
+      readonly sourceUpdatedAt: number;
+      readonly indexedAt: number;
+      readonly metadataJson: string | null;
     }>;
 
     return rows.map((row) => ({
       chunkId: row.chunkId,
+      documentId: row.documentId,
+      sourceId: row.sourceId,
+      sourceName: row.sourceName,
+      uri: row.uri,
+      text: row.text,
       distance: row.distance,
-      score: row.score
+      score: row.score,
+      documentStatus: row.documentStatus,
+      sourceStatus: row.sourceStatus,
+      sourceUpdatedAt: row.sourceUpdatedAt,
+      indexedAt: row.indexedAt,
+      ...(row.metadataJson === null ? {} : { metadata: parseMetadata(row.metadataJson) })
     }));
   }
 
