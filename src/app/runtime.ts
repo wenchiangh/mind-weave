@@ -17,6 +17,11 @@ import { CoreQueryService } from "../query/index.js";
 import type { QueryResult } from "../query/index.js";
 import { createDocumentId } from "../shared/identity.js";
 import {
+  createDefaultLogFilePath,
+  FileLogger,
+  type Logger
+} from "../observability/index.js";
+import {
   LocalFsSourceProvider,
   LocalFsSourceWatcher
 } from "../sources/index.js";
@@ -38,6 +43,7 @@ export type RuntimeDependencyOptions = {
   readonly storage?: SQLiteStorage | undefined;
   readonly sourceProvider?: SourceProvider | undefined;
   readonly createWatcher?: ((source: SourceDefinition) => SourceWatcher) | undefined;
+  readonly logger?: Logger | undefined;
 };
 
 export function getRuntimeHealth(): RuntimeHealth {
@@ -73,6 +79,7 @@ class ConfiguredAppRuntime implements AppRuntime {
   private readonly queryService: CoreQueryService;
   private readonly mcpHandlers: McpToolHandlers;
   private readonly createWatcher: (source: SourceDefinition) => SourceWatcher;
+  private readonly logger: Logger;
   private readonly watchers: SourceWatcher[] = [];
 
   constructor(
@@ -84,6 +91,9 @@ class ConfiguredAppRuntime implements AppRuntime {
     this.storage = options.storage ?? new SQLiteStorage(
       config.storage.path,
       createSQLiteOptions(this.embeddingProvider)
+    );
+    this.logger = options.logger ?? new FileLogger(
+      createDefaultLogFilePath(config.storage.path)
     );
     this.ownsStorage = options.storage === undefined;
     this.sourceProvider = options.sourceProvider ?? new LocalFsSourceProvider();
@@ -124,7 +134,7 @@ class ConfiguredAppRuntime implements AppRuntime {
     return getRuntimeHealth();
   }
 
-  getStatus(): RuntimeStatus {
+  async getStatus(): Promise<RuntimeStatus> {
     return {
       name: "mind-weave-core",
       status: "configured",
@@ -142,7 +152,14 @@ class ConfiguredAppRuntime implements AppRuntime {
         dimensions: this.config.embedding.dimensions
       },
       storage: {
-        type: this.config.storage.type
+        type: this.config.storage.type,
+        path: this.config.storage.path
+      },
+      observability: {
+        logPath: this.logger.logPath
+      },
+      index: {
+        documents: await this.storage.countDocumentsByStatus()
       },
       mcp: {
         enabled: this.config.mcp.enabled
@@ -152,56 +169,83 @@ class ConfiguredAppRuntime implements AppRuntime {
   }
 
   async start(): Promise<void> {
+    await this.logInfo("runtime.starting", {
+      sourceCount: this.config.sourceDefinitions.length
+    });
     await this.scan();
     for (const source of this.config.sourceDefinitions) {
       const watcher = this.createWatcher(source);
       await watcher.start();
       this.watchers.push(watcher);
     }
+    await this.logInfo("runtime.started", {
+      watcherCount: this.watchers.length
+    });
   }
 
   async scan(): Promise<void> {
-    await this.storage.saveSources(this.config.sourceDefinitions.map((source) => ({
-      sourceId: source.id,
-      name: source.name,
-      type: source.type,
-      rootUri: source.rootUri,
-      status: source.status
-    })));
+    await this.logInfo("scan.started", {
+      sourceCount: this.config.sourceDefinitions.length
+    });
 
-    for (const source of this.config.sourceDefinitions) {
-      const scan = await this.sourceProvider.scan(source);
-      const reconciler = new SourceScanReconciler({
-        storage: this.storage
+    try {
+      await this.storage.saveSources(this.config.sourceDefinitions.map((source) => ({
+        sourceId: source.id,
+        name: source.name,
+        type: source.type,
+        rootUri: source.rootUri,
+        status: source.status
+      })));
+
+      for (const source of this.config.sourceDefinitions) {
+        const scan = await this.sourceProvider.scan(source);
+        const reconciler = new SourceScanReconciler({
+          storage: this.storage
+        });
+
+        for (const candidate of scan.candidates) {
+          await this.queue.enqueue(this.queue.createJob({
+            type: "upsert-document",
+            target: {
+              documentId: createDocumentId(candidate.sourceId, candidate.relativePath ?? candidate.uri),
+              sourceId: candidate.sourceId,
+              uri: candidate.uri,
+              ...(candidate.relativePath === undefined ? {} : { relativePath: candidate.relativePath }),
+              fileType: candidate.fileType,
+              updatedAt: candidate.updatedAt,
+              size: candidate.size
+            }
+          }));
+        }
+
+        for (const job of await reconciler.reconcile(scan)) {
+          await this.queue.enqueue(job);
+        }
+      }
+
+      await this.queue.drain();
+      await this.logInfo("scan.finished", {
+        sourceCount: this.config.sourceDefinitions.length
       });
-
-      for (const candidate of scan.candidates) {
-        await this.queue.enqueue(this.queue.createJob({
-          type: "upsert-document",
-          target: {
-            documentId: createDocumentId(candidate.sourceId, candidate.relativePath ?? candidate.uri),
-            sourceId: candidate.sourceId,
-            uri: candidate.uri,
-            ...(candidate.relativePath === undefined ? {} : { relativePath: candidate.relativePath }),
-            fileType: candidate.fileType,
-            updatedAt: candidate.updatedAt,
-            size: candidate.size
-          }
-        }));
-      }
-
-      for (const job of await reconciler.reconcile(scan)) {
-        await this.queue.enqueue(job);
-      }
+    } catch (error) {
+      await this.logError("scan.failed", {
+        error: errorMessage(error)
+      });
+      throw error;
     }
-
-    await this.queue.drain();
   }
 
   async query(input: string): Promise<readonly QueryResult[]> {
-    return this.queryService.search({
-      query: input
-    });
+    try {
+      return await this.queryService.search({
+        query: input
+      });
+    } catch (error) {
+      await this.logError("query.failed", {
+        error: errorMessage(error)
+      });
+      throw error;
+    }
   }
 
   getMcpToolHandlers(): McpToolHandlers {
@@ -216,6 +260,8 @@ class ConfiguredAppRuntime implements AppRuntime {
     if (this.ownsStorage) {
       this.storage.close();
     }
+
+    await this.logInfo("runtime.stopped");
   }
 
   private async handleIndexJob(job: IndexJob): Promise<void> {
@@ -234,9 +280,28 @@ class ConfiguredAppRuntime implements AppRuntime {
     });
   }
 
+  private async logInfo(event: string, metadata = {}): Promise<void> {
+    try {
+      await this.logger.info(event, metadata);
+    } catch {
+      // Logging should not make runtime operations fail.
+    }
+  }
+
+  private async logError(event: string, metadata = {}): Promise<void> {
+    try {
+      await this.logger.error(event, metadata);
+    } catch {
+      // Logging should not make runtime operations fail.
+    }
+  }
 }
 
 function createSQLiteOptions(provider: EmbeddingProvider): SQLiteStorageOptions {
   const dimensions = provider.getConfig().dimensions;
   return dimensions === undefined ? {} : { vectorDimensions: dimensions };
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { Logger } from "../observability/index.js";
 import { isAppError } from "./errors.js";
 import {
   createRuntimeFromConfigFile,
@@ -70,7 +71,7 @@ describe("createRuntimeFromConfigFile", () => {
 
     const runtime = await createRuntimeFromConfigFile(configPath);
 
-    expect(runtime.getStatus()).toEqual({
+    await expect(runtime.getStatus()).resolves.toEqual({
       name: "mind-weave-core",
       status: "configured",
       sourceCount: 1,
@@ -89,7 +90,19 @@ describe("createRuntimeFromConfigFile", () => {
         dimensions: undefined
       },
       storage: {
-        type: "sqlite"
+        type: "sqlite",
+        path: path.join(path.dirname(configPath), "mind-weave.sqlite")
+      },
+      observability: {
+        logPath: path.join(path.dirname(configPath), "logs", "mindweave.log")
+      },
+      index: {
+        documents: {
+          indexed: 0,
+          stale: 0,
+          failed: 0,
+          deleted: 0
+        }
       },
       mcp: {
         enabled: true
@@ -103,6 +116,28 @@ describe("createRuntimeFromConfigFile", () => {
     const runtime = await createRuntimeFromConfigFile(configPath);
 
     await expect(runtime.scan()).resolves.toBeUndefined();
+    await runtime.stop();
+  });
+
+  it("logs scan start and finish events", async () => {
+    const { configPath } = await writeConfigFile();
+    const logger = new CapturingLogger();
+    const runtime = await createRuntimeFromConfigFile(configPath, { logger });
+
+    await runtime.scan();
+
+    expect(logger.events).toMatchObject([
+      {
+        level: "info",
+        event: "scan.started",
+        sourceCount: 1
+      },
+      {
+        level: "info",
+        event: "scan.finished",
+        sourceCount: 1
+      }
+    ]);
     await runtime.stop();
   });
 
@@ -120,6 +155,26 @@ describe("createRuntimeFromConfigFile", () => {
     await runtime.stop();
   });
 
+  it("logs query failures before surfacing them", async () => {
+    const { configPath } = await writeConfigFile();
+    const logger = new CapturingLogger();
+    const runtime = await createRuntimeFromConfigFile(configPath, { logger });
+
+    const error = await captureError(async () => runtime.query("hello"));
+
+    expect(error).toMatchObject({
+      name: "EmbeddingProviderError"
+    });
+    expect(logger.events).toMatchObject([
+      {
+        level: "error",
+        event: "query.failed",
+        error: "Missing API key environment variable: OPENAI_API_KEY"
+      }
+    ]);
+    await runtime.stop();
+  });
+
   it("can stop before downstream services exist", async () => {
     const { configPath } = await writeConfigFile();
     const runtime = await createRuntimeFromConfigFile(configPath);
@@ -127,3 +182,27 @@ describe("createRuntimeFromConfigFile", () => {
     await expect(runtime.stop()).resolves.toBeUndefined();
   });
 });
+
+class CapturingLogger implements Logger {
+  readonly events: Array<{
+    readonly level: "info" | "error";
+    readonly event: string;
+    readonly [key: string]: unknown;
+  }> = [];
+
+  async info(event: string, metadata = {}): Promise<void> {
+    this.events.push({
+      level: "info",
+      event,
+      ...metadata
+    });
+  }
+
+  async error(event: string, metadata = {}): Promise<void> {
+    this.events.push({
+      level: "error",
+      event,
+      ...metadata
+    });
+  }
+}

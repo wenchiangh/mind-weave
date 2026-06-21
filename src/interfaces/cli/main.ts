@@ -4,14 +4,24 @@ import {
   createRuntimeFromConfigFile,
   getRuntimeHealth
 } from "../../app/runtime.js";
+import type { AppRuntime } from "../../app/contracts.js";
+import {
+  createMindWeaveMcpServer,
+  type McpToolHandlers
+} from "../mcp/index.js";
 
 export type CliIO = {
   write: (value: string) => void;
 };
 
+export type CliOptions = {
+  readonly createRuntime?: ((configPath: string) => Promise<AppRuntime>) | undefined;
+  readonly serveMcp?: ((input: { readonly handlers: McpToolHandlers }) => Promise<void>) | undefined;
+};
+
 type CliCommand =
   | { readonly name: "health" }
-  | { readonly name: "status" | "start" | "scan"; readonly configPath: string }
+  | { readonly name: "status" | "start" | "scan" | "watch" | "mcp"; readonly configPath: string }
   | { readonly name: "query"; readonly configPath: string; readonly query: string };
 
 type CliUsageError = {
@@ -19,7 +29,11 @@ type CliUsageError = {
   readonly message: string;
 };
 
-export async function runCli(args: string[], io: CliIO): Promise<number> {
+export async function runCli(
+  args: string[],
+  io: CliIO,
+  options: CliOptions = {}
+): Promise<number> {
   let command: CliCommand;
   try {
     command = parseCommand(args);
@@ -34,14 +48,22 @@ export async function runCli(args: string[], io: CliIO): Promise<number> {
       return 0;
     }
 
-    const runtime = await createRuntimeFromConfigFile(command.configPath);
+    const runtime = await (options.createRuntime ?? createRuntimeFromConfigFile)(command.configPath);
 
     if (command.name === "status") {
-      writeJson(io, runtime.getStatus());
+      writeJson(io, await runtime.getStatus());
       return 0;
     }
 
     if (command.name === "start") {
+      await runtime.start();
+      await (options.serveMcp ?? serveMcpOverStdio)({
+        handlers: runtime.getMcpToolHandlers()
+      });
+      return 0;
+    }
+
+    if (command.name === "watch") {
       await runtime.start();
       return 0;
     }
@@ -54,6 +76,13 @@ export async function runCli(args: string[], io: CliIO): Promise<number> {
 
     if (command.name === "query") {
       writeJson(io, { results: await runtime.query(command.query) });
+      return 0;
+    }
+
+    if (command.name === "mcp") {
+      await (options.serveMcp ?? serveMcpOverStdio)({
+        handlers: runtime.getMcpToolHandlers()
+      });
       return 0;
     }
 
@@ -73,7 +102,13 @@ function parseCommand(args: readonly string[]): CliCommand {
     };
   }
 
-  if (command === "status" || command === "start" || command === "scan") {
+  if (
+    command === "status"
+    || command === "start"
+    || command === "scan"
+    || command === "watch"
+    || command === "mcp"
+  ) {
     return {
       name: command,
       configPath: requireConfigPath(args)
@@ -98,8 +133,16 @@ function parseCommand(args: readonly string[]): CliCommand {
   }
 
   throw usageError(
-    "Usage: mindweave health | status --config <path> | start --config <path> | scan --config <path> | query --config <path> <query>"
+    "Usage: mindweave health | status --config <path> | start --config <path> | scan --config <path> | watch --config <path> | query --config <path> <query> | mcp --config <path>"
   );
+}
+
+async function serveMcpOverStdio(
+  input: { readonly handlers: McpToolHandlers }
+): Promise<void> {
+  await createMindWeaveMcpServer({
+    handlers: input.handlers
+  }).connectStdio();
 }
 
 function requireConfigPath(args: readonly string[]): string {

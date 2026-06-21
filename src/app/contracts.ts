@@ -1,6 +1,7 @@
 import type { SourceDefinition } from "../sources/contracts.js";
 import type { QueryResult } from "../query/contracts.js";
 import type { McpToolHandlers } from "../interfaces/mcp/index.js";
+import type { DocumentStatusCounts } from "../storage/contracts.js";
 
 export type RuntimeHealth = {
   readonly name: "mind-weave-core";
@@ -14,6 +15,8 @@ export type RuntimeStatus = {
   readonly sources: readonly RuntimeSourceStatus[];
   readonly embedding: RuntimeEmbeddingStatus;
   readonly storage: RuntimeStorageStatus;
+  readonly observability: RuntimeObservabilityStatus;
+  readonly index: RuntimeIndexStatus;
   readonly mcp: RuntimeMcpStatus;
   readonly unavailableCapabilities: readonly RuntimeCapability[];
 };
@@ -31,6 +34,15 @@ export type RuntimeEmbeddingStatus = {
 
 export type RuntimeStorageStatus = {
   readonly type: string;
+  readonly path: string;
+};
+
+export type RuntimeObservabilityStatus = {
+  readonly logPath?: string | undefined;
+};
+
+export type RuntimeIndexStatus = {
+  readonly documents: DocumentStatusCounts;
 };
 
 export type RuntimeMcpStatus = {
@@ -49,7 +61,7 @@ export type AppErrorIssue = {
 
 export interface AppRuntime {
   getHealth(): RuntimeHealth;
-  getStatus(): RuntimeStatus;
+  getStatus(): Promise<RuntimeStatus>;
   start(): Promise<void>;
   scan(): Promise<void>;
   query(input: string): Promise<readonly QueryResult[]>;

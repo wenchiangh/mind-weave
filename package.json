@@ -21,6 +21,7 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "better-sqlite3": "^12.11.1",
     "jsonc-parser": "^3.3.1",
     "sqlite-vec": "^0.1.9",

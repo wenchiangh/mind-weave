@@ -3,6 +3,7 @@ export {
   mcpToolDefinitions,
   mcpToolNames
 } from "./tools.js";
+export { createMindWeaveMcpServer } from "./stdio-server.js";
 export type {
   ListSourcesToolInput,
   ListSourcesToolOutput,
@@ -12,3 +13,7 @@ export type {
   SearchKnowledgeToolInput,
   SearchKnowledgeToolOutput
 } from "./tools.js";
+export type {
+  MindWeaveMcpServer,
+  MindWeaveMcpServerOptions
+} from "./stdio-server.js";

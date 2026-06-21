@@ -6,13 +6,15 @@ export type {
   SourceStatusStore,
   StoredChunk,
   StoredDocument,
+  DocumentStatusCounts,
   StoredEmbedding,
   StoredEmbeddingVector,
   StoredChunkWithEmbedding,
   StoredSource,
   VectorSearchInput,
   VectorSearchResult,
-  VectorSearchStore
+  VectorSearchStore,
+  DocumentStatusStore
 } from "./contracts.js";
 export {
   StorageError,

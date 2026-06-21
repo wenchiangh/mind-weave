@@ -4,6 +4,8 @@ import * as sqliteVec from "sqlite-vec";
 import type { MetadataRecord } from "../shared/contracts.js";
 import type {
   ChunkEmbeddingStore,
+  DocumentStatusCounts,
+  DocumentStatusStore,
   DocumentRegistryStore,
   EmbeddingVectorStore,
   IndexConfigStore,
@@ -73,6 +75,7 @@ type ChunkEmbeddingRow = {
 export class SQLiteStorage implements
   SourceStatusStore,
   DocumentRegistryStore,
+  DocumentStatusStore,
   ChunkEmbeddingStore,
   EmbeddingVectorStore,
   VectorSearchStore,
@@ -205,6 +208,29 @@ export class SQLiteStorage implements
     `)
       .all(sourceId)
       .map((row) => mapDocumentRow(row as DocumentRow));
+  }
+
+  async countDocumentsByStatus(): Promise<DocumentStatusCounts> {
+    const counts: DocumentStatusCounts = {
+      indexed: 0,
+      stale: 0,
+      failed: 0,
+      deleted: 0
+    };
+    const rows = this.db.prepare(`
+      SELECT status AS value, COUNT(*) AS count
+      FROM documents
+      GROUP BY status
+    `).all() as Array<{
+      readonly value: StoredDocument["status"];
+      readonly count: number;
+    }>;
+
+    for (const row of rows) {
+      counts[row.value] = row.count;
+    }
+
+    return counts;
   }
 
   async markDocumentDeleted(

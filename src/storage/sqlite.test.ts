@@ -199,6 +199,23 @@ describe("SQLiteStorage", () => {
     storage.close();
   });
 
+  it("counts documents by status for runtime diagnostics", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath());
+    await storage.upsertDocument(createDocument("doc_indexed"));
+    await storage.upsertDocument(createDocument("doc_stale", "source_a", "stale"));
+    await storage.upsertDocument(createDocument("doc_failed", "source_a", "failed"));
+    await storage.upsertDocument(createDocument("doc_deleted", "source_a", "deleted"));
+
+    await expect(storage.countDocumentsByStatus()).resolves.toEqual({
+      indexed: 1,
+      stale: 1,
+      failed: 1,
+      deleted: 1
+    });
+
+    storage.close();
+  });
+
   it("transactionally replaces chunks and embedding metadata for a document", async () => {
     const storage = new SQLiteStorage(await createDatabasePath());
     await storage.upsertDocument(createDocument("doc_a"));

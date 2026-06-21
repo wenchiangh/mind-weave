@@ -36,7 +36,7 @@ Status tags track current phase:
 
 ## WU-00 Phase Documentation and Alignment
 
-- [ ] Status: `implemented`
+- [x] Status: `passed`
 - Plan: phase documents in this directory
 - Depends on: P0 Core MVP completion
 - Design refs:
@@ -59,8 +59,8 @@ Status tags track current phase:
 
 ## WU-01 MCP Stdio Server Plan
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/01-mcp-stdio-server-plan.md`
 - Depends on: WU-00
 - Design refs:
   - `03_detailed_design.md#5-mcp-stdio-transport`
@@ -73,13 +73,15 @@ Status tags track current phase:
   - A plan exists that can be executed without guessing MCP transport boundaries.
 - Validation summary:
   - Plan review confirms no scan/watch refactor is required for MCP serving.
+  - SDK decision recorded: use `@modelcontextprotocol/sdk` v1.
+  - Stdio server and CLI command are intentionally split into separate work units.
 - Completion criteria:
   - Work-unit plan exists and is approved.
 
 ## WU-02 MCP Stdio Server Implementation
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/01-mcp-stdio-server-plan.md`
 - Depends on: WU-01
 - Design refs:
   - `03_detailed_design.md#5-mcp-stdio-transport`
@@ -93,14 +95,16 @@ Status tags track current phase:
 - Validation summary:
   - Typecheck and tests pass.
   - MCP handler behavior remains unchanged.
+  - MCP stdio server uses `@modelcontextprotocol/sdk` in-memory transport for deterministic tests.
+  - Targeted MCP tests cover tool listing, `search_knowledge`, `list_sources`, and handler error propagation.
 - Completion criteria:
   - MCP stdio serving works in tests.
   - No retrieval logic is implemented in the transport.
 
 ## WU-03 MCP CLI Command and Serve-Only Semantics
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/03-mcp-cli-command-and-serve-only-semantics.md`
 - Depends on: WU-02
 - Design refs:
   - `03_detailed_design.md#4-capability-and-workflow-principle`
@@ -112,13 +116,15 @@ Status tags track current phase:
   - The CLI can start MCP serving over an existing index.
 - Validation summary:
   - Tests prove `mcp` command is serve-only.
+  - CLI tests cover injected MCP serving and prove `scan()` and `start()` are not called.
+  - Usage text includes `mcp --config <path>`.
 - Completion criteria:
   - Command semantics are documented and tested.
 
 ## WU-04 Log File Output
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/04-log-file-output.md`
 - Depends on: WU-02
 - Design refs:
   - `03_detailed_design.md#7-logging-design`
@@ -130,14 +136,16 @@ Status tags track current phase:
   - A user can find a log file that explains common failures.
 - Validation summary:
   - Tests cover file sink behavior and stdout isolation for MCP stdio where practical.
+  - Logger tests cover file creation, JSONL append behavior, and default path derivation.
+  - Runtime tests cover scan start/finish events and query failure logging.
 - Completion criteria:
   - Logs are written to a stable location.
   - Secrets are not intentionally logged.
 
 ## WU-05 Runtime and Index Status
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/05-runtime-and-index-status.md`
 - Depends on: WU-04
 - Design refs:
   - `03_detailed_design.md#8-status-design`
@@ -149,14 +157,16 @@ Status tags track current phase:
   - `status` can explain whether configured sources have indexed, stale, failed, or deleted documents.
 - Validation summary:
   - Tests cover status over empty and populated indexes.
+  - SQLite tests cover document counts by status.
+  - Runtime and CLI status tests cover storage path, log path, and zero document counts.
 - Completion criteria:
   - Status remains read-only.
   - Status does not trigger scan, watch, MCP, or provider calls.
 
 ## WU-06 Workflow Semantics and Start Command
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/06-workflow-semantics-and-start-command.md`
 - Depends on: WU-03, WU-04
 - Design refs:
   - `03_detailed_design.md#4-capability-and-workflow-principle`
@@ -167,15 +177,18 @@ Status tags track current phase:
 - Observable result:
   - Users and future UI code can rely on clear command semantics.
 - Validation summary:
-  - Tests cover lifecycle behavior at the command/runtime boundary.
+  - CLI tests cover lifecycle behavior at the command/runtime boundary.
+  - `mcp` remains serve-only.
+  - `watch` starts runtime scan/watch behavior without serving MCP.
+  - `start` starts runtime scan/watch behavior and then serves MCP.
 - Completion criteria:
   - Command behavior is documented and tested.
   - Existing scan/watch implementation is reused.
 
 ## WU-07 Agent-Facing End-to-End Validation
 
-- [ ] Status: `planned`
-- Plan: none yet
+- [x] Status: `passed`
+- Plan: `work-units/07-agent-facing-end-to-end-validation.md`
 - Depends on: WU-02 through WU-06
 - Design refs:
   - `00_spec.md#acceptance-criteria`
@@ -187,8 +200,10 @@ Status tags track current phase:
 - Observable result:
   - An MCP client can retrieve indexed chunks through `search_knowledge`.
 - Validation summary:
-  - Typecheck and tests pass.
-  - Agent-facing MCP retrieval is validated.
+  - Runtime e2e test covers scan, index, query, MCP client `search_knowledge`, edit update, and delete reconciliation.
+  - MCP client validation uses deterministic in-memory transport and fake embeddings.
+  - MCP result assertions cover chunk text, score, source, document, URI, and status metadata.
+  - `list_sources` is validated through the MCP client path.
 - Completion criteria:
   - P0.5 acceptance criteria pass.
   - Remaining gaps are documented before the phase is marked passed.

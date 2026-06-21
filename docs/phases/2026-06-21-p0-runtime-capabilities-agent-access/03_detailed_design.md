@@ -145,7 +145,7 @@ The MCP layer should not add generated explanations such as why a chunk is relev
 
 ## 7. Logging Design
 
-Decision status: `Proposed`
+Decision status: `Accepted`
 
 P0.5 should add a small logging module rather than mixing logs into CLI, MCP, indexing, or storage code.
 
@@ -177,7 +177,7 @@ The exact log format remains open. JSONL is the preferred default because it is 
 
 ## 8. Status Design
 
-Decision status: `Proposed`
+Decision status: `Accepted`
 
 P0.5 status should move beyond config-only status.
 
@@ -202,7 +202,7 @@ Status must not:
 
 ## 9. Runtime Structure
 
-Decision status: `Proposed`
+Decision status: `Accepted`
 
 P0.5 may add new files for MCP transport and observability without reorganizing the whole source tree.
 
@@ -251,4 +251,3 @@ P0.5 is complete when:
 - logs and status are useful enough to diagnose common failures.
 - no OS-specific UI or daemon assumptions have entered Core.
 - remaining scan/watch hardening work is documented as follow-up rather than hidden.
-

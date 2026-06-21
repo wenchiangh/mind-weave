@@ -31,6 +31,8 @@ export type StoredDocument = {
   readonly metadata?: MetadataRecord;
 };
 
+export type DocumentStatusCounts = Record<StoredDocument["status"], number>;
+
 export type StoredChunk = {
   readonly chunkId: EntityId;
   readonly documentId: EntityId;
@@ -115,4 +117,8 @@ export interface VectorSearchStore {
 export interface IndexConfigStore {
   readIndexConfig(): Promise<MetadataRecord | null>;
   writeIndexConfig(config: MetadataRecord): Promise<void>;
+}
+
+export interface DocumentStatusStore {
+  countDocumentsByStatus(): Promise<DocumentStatusCounts>;
 }
