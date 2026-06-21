@@ -31,18 +31,28 @@ export type {
   UserConfig
 } from "./config/index.js";
 export {
+  LocalFsSourceWatcher,
   LocalFsSourceProvider,
   SourceError,
+  normalizeLocalFsWatchEvent,
   isSourceError
 } from "./sources/index.js";
 export type {
   SourceCandidate,
+  SourceDeleteTarget,
   SourceDefinition,
   SourceErrorCode,
   SourceErrorIssue,
+  SourceFileEvent,
   SourceId,
   SourceProvider,
-  SourceScanResult
+  SourceScanResult,
+  SourceWatcher,
+  SourceWatchEventInput,
+  LocalFsSourceWatcherOptions,
+  LocalFsWatchCallback,
+  LocalFsWatchFunction,
+  LocalFsWatchHandle
 } from "./sources/index.js";
 export {
   createChunkContentHash,
@@ -124,6 +134,7 @@ export {
   DocumentUpsertIndexer,
   InMemoryIndexJobQueue,
   IndexQueueError,
+  SourceEventIndexJobRouter,
   SourceScanReconciler,
   createPermanentIndexError,
   createRetryableIndexError
@@ -141,5 +152,6 @@ export type {
   IndexJobStatus,
   IndexJobType,
   IndexQueueErrorKind,
+  SourceEventIndexJobRouterOptions,
   SourceScanReconcilerOptions
 } from "./indexing/index.js";

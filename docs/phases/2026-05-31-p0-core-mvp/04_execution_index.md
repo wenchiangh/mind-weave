@@ -397,7 +397,7 @@ Status tags track current phase:
 
 ## WU-15 File Watcher Integration
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/15-file-watcher-integration.md`
 - Depends on: WU-04, WU-10, WU-11, WU-12
 - Design refs:
@@ -411,7 +411,9 @@ Status tags track current phase:
 - Observable result:
   - While the runtime is running, creating, editing, and deleting Markdown files triggers eventual index updates.
 - Validation summary:
-  - Tests focus on event normalization and queue behavior with controlled watcher fakes; a small integration test may cover real filesystem events if stable.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Tests cover local filesystem event normalization, ignored paths, delete normalization, watcher callback/error behavior, and source-event-to-queue job routing.
 - Completion criteria:
   - Watcher failures are logged or surfaced in status.
   - Typecheck and tests pass.

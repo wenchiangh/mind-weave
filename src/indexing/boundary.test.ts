@@ -6,6 +6,7 @@ const indexingFiles = [
   "index.ts",
   "queue.ts",
   "reconcile.ts",
+  "source-events.ts",
   "upsert.ts"
 ];
 

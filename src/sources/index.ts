@@ -1,11 +1,15 @@
 export type {
   SourceCandidate,
+  SourceDeleteTarget,
   SourceDefinition,
+  SourceFileEvent,
   SourceId,
   SourceProvider,
   SourceScanResult,
   SourceStatus,
-  SourceType
+  SourceType,
+  SourceWatcher,
+  SourceWatchEventInput
 } from "./contracts.js";
 export {
   SourceError,
@@ -20,3 +24,13 @@ export {
   localFilePathToUri,
   localFileUriToPath
 } from "./local-fs.js";
+export {
+  LocalFsSourceWatcher,
+  normalizeLocalFsWatchEvent
+} from "./local-fs-watch.js";
+export type {
+  LocalFsSourceWatcherOptions,
+  LocalFsWatchCallback,
+  LocalFsWatchFunction,
+  LocalFsWatchHandle
+} from "./local-fs-watch.js";

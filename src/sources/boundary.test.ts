@@ -5,7 +5,8 @@ const sourceFiles = [
   "contracts.ts",
   "errors.ts",
   "index.ts",
-  "local-fs.ts"
+  "local-fs.ts",
+  "local-fs-watch.ts"
 ];
 
 describe("sources module boundary", () => {

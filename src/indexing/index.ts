@@ -17,6 +17,12 @@ export type {
   IndexQueueErrorKind
 } from "./queue.js";
 export {
+  SourceEventIndexJobRouter
+} from "./source-events.js";
+export type {
+  SourceEventIndexJobRouterOptions
+} from "./source-events.js";
+export {
   DocumentDeleteExecutor,
   SourceScanReconciler
 } from "./reconcile.js";

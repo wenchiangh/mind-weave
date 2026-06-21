@@ -36,6 +36,33 @@ export type SourceScanResult = {
   readonly candidates: readonly SourceCandidate[];
 };
 
+export type SourceDeleteTarget = {
+  readonly sourceId: SourceId;
+  readonly uri: UriString;
+  readonly relativePath?: RelativePath;
+  readonly fileType: FileType;
+};
+
+export type SourceFileEvent =
+  | {
+    readonly type: "upsert";
+    readonly candidate: SourceCandidate;
+  }
+  | {
+    readonly type: "delete";
+    readonly target: SourceDeleteTarget;
+  };
+
+export type SourceWatchEventInput = {
+  readonly kind: "create" | "change" | "delete";
+  readonly absolutePath: string;
+};
+
+export interface SourceWatcher {
+  start(): Promise<void>;
+  stop(): Promise<void>;
+}
+
 export interface SourceProvider {
   scan(source: SourceDefinition): Promise<SourceScanResult>;
 }
