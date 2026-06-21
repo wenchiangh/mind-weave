@@ -235,7 +235,7 @@ Status tags track current phase:
 
 ## WU-08 sqlite-vec Vector Storage Spike
 
-- [ ] Status: `planned`
+- [x] Status: `passed`
 - Plan: `work-units/08-sqlite-vec-vector-storage-spike.md`
 - Depends on: WU-07
 - Design refs:
@@ -249,7 +249,10 @@ Status tags track current phase:
 - Observable result:
   - A temporary SQLite database can store vectors and return nearest rows joined back to metadata with normalized scores.
 - Validation summary:
-  - Integration tests or spike tests cover sqlite-vec load, vector insert, KNN query, metadata join, deleted row exclusion, source filter behavior, and score normalization.
+  - `pnpm typecheck` passes.
+  - `pnpm test` passes.
+  - Integration tests cover sqlite-vec load, vector insert, KNN query, metadata join, deleted/failed/disabled row exclusion, source filter behavior, file type filter behavior, score threshold behavior, vector replacement cleanup, and score normalization.
+  - Spike findings are recorded in the work-unit plan.
 - Completion criteria:
   - A clear implementation decision is recorded in the work unit plan or follow-up docs.
   - Typecheck and relevant tests pass.

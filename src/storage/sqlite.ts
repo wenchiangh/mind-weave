@@ -1,19 +1,31 @@
 import Database from "better-sqlite3";
 import type { Database as DatabaseConnection } from "better-sqlite3";
+import * as sqliteVec from "sqlite-vec";
 import type { MetadataRecord } from "../shared/contracts.js";
 import type {
   ChunkEmbeddingStore,
   DocumentRegistryStore,
+  EmbeddingVectorStore,
   IndexConfigStore,
   SourceStatusStore,
   StoredChunk,
   StoredDocument,
   StoredEmbedding,
-  StoredSource
+  StoredEmbeddingVector,
+  StoredSource,
+  VectorSearchInput,
+  VectorSearchResult,
+  VectorSearchStore
 } from "./contracts.js";
 import { StorageError } from "./errors.js";
 
-const schemaVersion = 1;
+const schemaVersion = 2;
+const defaultVectorDimensions = 1536;
+
+export type SQLiteStorageOptions = {
+  readonly vectorDimensions?: number | undefined;
+  readonly vectorSearchOverfetchFactor?: number | undefined;
+};
 
 type JsonRow = {
   readonly value: string;
@@ -47,12 +59,23 @@ export class SQLiteStorage implements
   SourceStatusStore,
   DocumentRegistryStore,
   ChunkEmbeddingStore,
+  EmbeddingVectorStore,
+  VectorSearchStore,
   IndexConfigStore {
   private readonly db: DatabaseConnection;
+  private readonly vectorDimensions: number;
+  private readonly vectorSearchOverfetchFactor: number;
 
-  constructor(private readonly databasePath: string) {
+  constructor(
+    private readonly databasePath: string,
+    options: SQLiteStorageOptions = {}
+  ) {
+    this.vectorDimensions = options.vectorDimensions ?? defaultVectorDimensions;
+    this.vectorSearchOverfetchFactor = options.vectorSearchOverfetchFactor ?? 10;
+
     try {
       this.db = new Database(databasePath);
+      sqliteVec.load(this.db);
       this.db.pragma("foreign_keys = ON");
       this.initializeSchema();
     } catch (error) {
@@ -187,6 +210,15 @@ export class SQLiteStorage implements
   ): Promise<void> {
     const replace = this.db.transaction(() => {
       this.db.prepare(`
+        DELETE FROM vec_embeddings
+        WHERE embedding_id IN (
+          SELECT embedding_id FROM embeddings
+          WHERE chunk_id IN (
+            SELECT chunk_id FROM chunks WHERE document_id = ?
+          )
+        )
+      `).run(documentId);
+      this.db.prepare(`
         DELETE FROM embeddings
         WHERE chunk_id IN (
           SELECT chunk_id FROM chunks WHERE document_id = ?
@@ -234,6 +266,115 @@ export class SQLiteStorage implements
     replace();
   }
 
+  async replaceEmbeddingVectors(
+    vectors: readonly StoredEmbeddingVector[]
+  ): Promise<void> {
+    const replace = this.db.transaction((items: readonly StoredEmbeddingVector[]) => {
+      const parentExists = this.db.prepare(`
+        SELECT 1 FROM embeddings WHERE embedding_id = ?
+      `);
+      const deleteVector = this.db.prepare(`
+        DELETE FROM vec_embeddings WHERE embedding_id = ?
+      `);
+      const insertVector = this.db.prepare(`
+        INSERT INTO vec_embeddings (embedding, embedding_id)
+        VALUES (vec_f32(?), ?)
+      `);
+
+      for (const item of items) {
+        if (parentExists.get(item.embeddingId) === undefined) {
+          throw new StorageError({
+            code: "STORAGE_OPERATION_FAILED",
+            databasePath: this.databasePath,
+            message: `Cannot write vector without embedding metadata parent: ${item.embeddingId}`
+          });
+        }
+
+        deleteVector.run(item.embeddingId);
+        insertVector.run(JSON.stringify(item.vector), item.embeddingId);
+      }
+    });
+
+    replace(vectors);
+  }
+
+  async searchVectors(input: VectorSearchInput): Promise<readonly VectorSearchResult[]> {
+    const limit = Math.max(1, input.limit);
+    const candidateLimit = Math.max(
+      limit,
+      limit * this.vectorSearchOverfetchFactor
+    );
+    const parameters: Record<string, unknown> = {
+      queryVector: JSON.stringify(input.vector),
+      candidateLimit,
+      limit,
+      scoreThreshold: input.scoreThreshold ?? null
+    };
+    const conditions = [
+      "documents.status IN ('indexed', 'stale')",
+      "sources.status != 'disabled'"
+    ];
+
+    if (input.includeSourceIds !== undefined && input.includeSourceIds.length > 0) {
+      conditions.push(`documents.source_id IN (${bindList(
+        "includeSourceId",
+        input.includeSourceIds,
+        parameters
+      )})`);
+    }
+
+    if (input.excludeSourceIds !== undefined && input.excludeSourceIds.length > 0) {
+      conditions.push(`documents.source_id NOT IN (${bindList(
+        "excludeSourceId",
+        input.excludeSourceIds,
+        parameters
+      )})`);
+    }
+
+    if (input.fileTypes !== undefined && input.fileTypes.length > 0) {
+      conditions.push(`documents.file_type IN (${bindList(
+        "fileType",
+        input.fileTypes,
+        parameters
+      )})`);
+    }
+
+    if (input.scoreThreshold !== undefined) {
+      conditions.push("(1.0 / (1.0 + knn.distance)) >= @scoreThreshold");
+    }
+
+    const rows = this.db.prepare(`
+      WITH knn AS (
+        SELECT embedding_id, distance
+        FROM vec_embeddings
+        WHERE embedding MATCH vec_f32(@queryVector)
+          AND k = @candidateLimit
+      )
+      SELECT
+        chunks.chunk_id AS chunkId,
+        knn.distance AS distance,
+        1.0 / (1.0 + knn.distance) AS score
+      FROM knn
+      JOIN embeddings ON embeddings.embedding_id = knn.embedding_id
+      JOIN chunks ON chunks.chunk_id = embeddings.chunk_id
+      JOIN documents ON documents.document_id = chunks.document_id
+      JOIN sources ON sources.source_id = documents.source_id
+      WHERE ${conditions.join("\n        AND ")}
+      ORDER BY knn.distance ASC
+      LIMIT @limit
+    `).all(parameters) as Array<{
+      readonly chunkId: string;
+      readonly distance: number;
+      readonly score: number;
+    }>;
+
+    return rows.map((row) => ({
+      chunkId: row.chunkId,
+      distance: row.distance,
+      score: row.score
+    }));
+  }
+
   async readIndexConfig(): Promise<MetadataRecord | null> {
     const row = this.db.prepare(`
       SELECT config_json AS value FROM index_config WHERE id = 'active'
@@ -251,7 +392,7 @@ export class SQLiteStorage implements
   }
 
   // Test and maintenance visibility. Runtime/query code should use domain methods.
-  countRows(tableName: "chunks" | "embeddings"): number {
+  countRows(tableName: "chunks" | "embeddings" | "vec_embeddings"): number {
     const row = this.db.prepare(`SELECT COUNT(*) AS value FROM ${tableName}`).get() as {
       readonly value: number;
     };
@@ -336,12 +477,32 @@ export class SQLiteStorage implements
       );
     `);
 
+    this.db.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS vec_embeddings
+      USING vec0(
+        embedding float[${this.vectorDimensions}] distance_metric=cosine,
+        embedding_id text
+      );
+    `);
+
     this.db.prepare(`
       INSERT INTO meta (key, value)
       VALUES ('schema_version', ?)
       ON CONFLICT(key) DO NOTHING
     `).run(String(schemaVersion));
   }
+}
+
+function bindList(
+  prefix: string,
+  values: readonly string[],
+  parameters: Record<string, unknown>
+): string {
+  return values.map((value, index) => {
+    const key = `${prefix}${index}`;
+    parameters[key] = value;
+    return `@${key}`;
+  }).join(", ");
 }
 
 function mapSourceRow(row: SourceRow): StoredSource {

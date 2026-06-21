@@ -78,12 +78,15 @@ export {
 export type {
   ChunkEmbeddingStore,
   DocumentRegistryStore,
+  EmbeddingVectorStore,
   IndexConfigStore,
   SourceStatusStore,
+  SQLiteStorageOptions,
   StorageErrorCode,
   StorageErrorIssue,
   StoredChunk,
   StoredDocument,
   StoredEmbedding,
+  StoredEmbeddingVector,
   StoredSource
 } from "./storage/index.js";

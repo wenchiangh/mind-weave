@@ -49,6 +49,11 @@ export type StoredEmbedding = {
   readonly dimensions?: number;
 };
 
+export type StoredEmbeddingVector = {
+  readonly embeddingId: EntityId;
+  readonly vector: Vector;
+};
+
 export type VectorSearchInput = {
   readonly vector: Vector;
   readonly limit: number;
@@ -81,6 +86,10 @@ export interface ChunkEmbeddingStore {
     chunks: readonly StoredChunk[],
     embeddings: readonly StoredEmbedding[]
   ): Promise<void>;
+}
+
+export interface EmbeddingVectorStore {
+  replaceEmbeddingVectors(vectors: readonly StoredEmbeddingVector[]): Promise<void>;
 }
 
 export interface VectorSearchStore {

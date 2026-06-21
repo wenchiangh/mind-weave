@@ -17,25 +17,33 @@ async function createDatabasePath(): Promise<string> {
   return path.join(directory, "mind-weave.sqlite");
 }
 
-function createSource(sourceId = "source_a"): StoredSource {
+function createSource(
+  sourceId = "source_a",
+  status: StoredSource["status"] = "active"
+): StoredSource {
   return {
     sourceId,
     name: `Source ${sourceId}`,
     type: "local-fs",
     rootUri: `file:///tmp/${sourceId}`,
-    status: "active",
+    status,
     lastScannedAt: 1000
   };
 }
 
-function createDocument(documentId = "doc_a"): StoredDocument {
+function createDocument(
+  documentId = "doc_a",
+  sourceId = "source_a",
+  status: StoredDocument["status"] = "indexed",
+  fileType = "markdown"
+): StoredDocument {
   return {
     documentId,
-    sourceId: "source_a",
-    uri: `file:///tmp/source_a/${documentId}.md`,
+    sourceId,
+    uri: `file:///tmp/${sourceId}/${documentId}.md`,
     relativePath: `${documentId}.md`,
-    fileType: "markdown",
-    status: "indexed",
+    fileType,
+    status,
     sourceUpdatedAt: 1000,
     indexedAt: 2000,
     metadata: {
@@ -44,11 +52,16 @@ function createDocument(documentId = "doc_a"): StoredDocument {
   };
 }
 
-function createChunk(index: number, text = `chunk ${index}`): StoredChunk {
+function createChunk(
+  index: number,
+  text = `chunk ${index}`,
+  documentId = "doc_a",
+  sourceId = "source_a"
+): StoredChunk {
   return {
-    chunkId: `chunk_${index}`,
-    documentId: "doc_a",
-    sourceId: "source_a",
+    chunkId: `${documentId}_chunk_${index}`,
+    documentId,
+    sourceId,
     index,
     text,
     contentHash: `hash_${index}`
@@ -57,12 +70,48 @@ function createChunk(index: number, text = `chunk ${index}`): StoredChunk {
 
 function createEmbedding(chunkId: string, index: number): StoredEmbedding {
   return {
-    embeddingId: `embedding_${index}`,
+    embeddingId: `${chunkId}_embedding_${index}`,
     chunkId,
     provider: "openai-compatible",
     model: "text-embedding-3-small",
     dimensions: 1536
   };
+}
+
+async function insertSearchFixture(storage: SQLiteStorage): Promise<void> {
+  await storage.saveSources([
+    createSource("source_a"),
+    createSource("source_b"),
+    createSource("source_disabled", "disabled")
+  ]);
+
+  const documents = [
+    createDocument("doc_near", "source_a", "indexed", "markdown"),
+    createDocument("doc_stale", "source_a", "stale", "markdown"),
+    createDocument("doc_other_source", "source_b", "indexed", "markdown"),
+    createDocument("doc_text", "source_a", "indexed", "text"),
+    createDocument("doc_failed", "source_a", "failed", "markdown"),
+    createDocument("doc_deleted", "source_a", "deleted", "markdown"),
+    createDocument("doc_disabled_source", "source_disabled", "indexed", "markdown")
+  ];
+
+  for (const document of documents) {
+    await storage.upsertDocument(document);
+    const chunk = createChunk(0, document.documentId, document.documentId, document.sourceId);
+    await storage.replaceDocumentChunks(document.documentId, [chunk], [
+      createEmbedding(chunk.chunkId, 0)
+    ]);
+  }
+
+  await storage.replaceEmbeddingVectors([
+    { embeddingId: "doc_near_chunk_0_embedding_0", vector: [1, 0, 0] },
+    { embeddingId: "doc_stale_chunk_0_embedding_0", vector: [0.95, 0.05, 0] },
+    { embeddingId: "doc_other_source_chunk_0_embedding_0", vector: [0.8, 0.2, 0] },
+    { embeddingId: "doc_text_chunk_0_embedding_0", vector: [0.7, 0.3, 0] },
+    { embeddingId: "doc_failed_chunk_0_embedding_0", vector: [0.99, 0.01, 0] },
+    { embeddingId: "doc_deleted_chunk_0_embedding_0", vector: [0.98, 0.02, 0] },
+    { embeddingId: "doc_disabled_source_chunk_0_embedding_0", vector: [0.97, 0.03, 0] }
+  ]);
 }
 
 async function captureError(action: () => unknown): Promise<unknown> {
@@ -158,8 +207,8 @@ describe("SQLiteStorage", () => {
       createChunk(0),
       createChunk(1)
     ], [
-      createEmbedding("chunk_0", 0),
-      createEmbedding("chunk_1", 1)
+      createEmbedding("doc_a_chunk_0", 0),
+      createEmbedding("doc_a_chunk_1", 1)
     ]);
     expect(storage.countRows("chunks")).toBe(2);
     expect(storage.countRows("embeddings")).toBe(2);
@@ -167,10 +216,115 @@ describe("SQLiteStorage", () => {
     await storage.replaceDocumentChunks("doc_a", [
       createChunk(2, "replacement")
     ], [
-      createEmbedding("chunk_2", 2)
+      createEmbedding("doc_a_chunk_2", 2)
     ]);
     expect(storage.countRows("chunks")).toBe(1);
     expect(storage.countRows("embeddings")).toBe(1);
+
+    storage.close();
+  });
+
+  it("stores vectors and searches nearest rows joined through active metadata", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath(), {
+      vectorDimensions: 3
+    });
+    await insertSearchFixture(storage);
+
+    const results = await storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10
+    });
+
+    expect(results.map((result) => result.chunkId)).toEqual([
+      "doc_near_chunk_0",
+      "doc_stale_chunk_0",
+      "doc_other_source_chunk_0",
+      "doc_text_chunk_0"
+    ]);
+    expect(results[0]).toMatchObject({
+      chunkId: "doc_near_chunk_0",
+      distance: 0,
+      score: 1
+    });
+    expect(results.every((result) => result.score > 0 && result.score <= 1)).toBe(true);
+
+    storage.close();
+  });
+
+  it("applies source, file type, and score filters in vector search SQL", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath(), {
+      vectorDimensions: 3
+    });
+    await insertSearchFixture(storage);
+
+    await expect(storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10,
+      includeSourceIds: ["source_b"]
+    })).resolves.toMatchObject([
+      {
+        chunkId: "doc_other_source_chunk_0"
+      }
+    ]);
+
+    await expect(storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10,
+      excludeSourceIds: ["source_a"]
+    })).resolves.toMatchObject([
+      {
+        chunkId: "doc_other_source_chunk_0"
+      }
+    ]);
+
+    await expect(storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10,
+      fileTypes: ["text"]
+    })).resolves.toMatchObject([
+      {
+        chunkId: "doc_text_chunk_0"
+      }
+    ]);
+
+    await expect(storage.searchVectors({
+      vector: [1, 0, 0],
+      limit: 10,
+      scoreThreshold: 0.99
+    })).resolves.toMatchObject([
+      {
+        chunkId: "doc_near_chunk_0"
+      },
+      {
+        chunkId: "doc_stale_chunk_0"
+      }
+    ]);
+
+    storage.close();
+  });
+
+  it("cleans vector rows when document chunks are replaced", async () => {
+    const storage = new SQLiteStorage(await createDatabasePath(), {
+      vectorDimensions: 3
+    });
+    await storage.upsertDocument(createDocument("doc_a"));
+
+    await storage.replaceDocumentChunks("doc_a", [
+      createChunk(0)
+    ], [
+      createEmbedding("doc_a_chunk_0", 0)
+    ]);
+    await storage.replaceEmbeddingVectors([
+      { embeddingId: "doc_a_chunk_0_embedding_0", vector: [1, 0, 0] }
+    ]);
+    expect(storage.countRows("vec_embeddings")).toBe(1);
+
+    await storage.replaceDocumentChunks("doc_a", [
+      createChunk(1)
+    ], [
+      createEmbedding("doc_a_chunk_1", 1)
+    ]);
+    expect(storage.countRows("vec_embeddings")).toBe(0);
 
     storage.close();
   });

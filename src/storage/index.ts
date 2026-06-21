@@ -1,11 +1,13 @@
 export type {
   ChunkEmbeddingStore,
   DocumentRegistryStore,
+  EmbeddingVectorStore,
   IndexConfigStore,
   SourceStatusStore,
   StoredChunk,
   StoredDocument,
   StoredEmbedding,
+  StoredEmbeddingVector,
   StoredSource,
   VectorSearchInput,
   VectorSearchResult,
@@ -21,4 +23,7 @@ export type {
 } from "./errors.js";
 export {
   SQLiteStorage
+} from "./sqlite.js";
+export type {
+  SQLiteStorageOptions
 } from "./sqlite.js";
