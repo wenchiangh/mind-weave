@@ -14,6 +14,11 @@ This directory separates stable project knowledge from phase-specific execution 
   - [Open Questions](./phases/2026-05-31-p0-core-mvp/02_open_questions.md)
   - [Detailed Design](./phases/2026-05-31-p0-core-mvp/03_detailed_design.md)
   - [Execution Index](./phases/2026-05-31-p0-core-mvp/04_execution_index.md)
+- [P0.5 Runtime Capabilities and Agent Access](./phases/2026-06-21-p0-runtime-capabilities-agent-access/00_spec.md): next runtime phase for real MCP stdio access, logs, status, and command workflow semantics.
+  - [Implementation Outline](./phases/2026-06-21-p0-runtime-capabilities-agent-access/01_implementation_plan.md)
+  - [Open Questions](./phases/2026-06-21-p0-runtime-capabilities-agent-access/02_open_questions.md)
+  - [Detailed Design](./phases/2026-06-21-p0-runtime-capabilities-agent-access/03_detailed_design.md)
+  - [Execution Index](./phases/2026-06-21-p0-runtime-capabilities-agent-access/04_execution_index.md)
 - [P1 macOS Tauri Shell](./phases/p1-macos-tauri-shell/00_direction.md): future product shell direction, intentionally kept thin until Core MVP is validated.
 
 Phase directories contain scope, implementation planning, and open questions for a specific stage. They are expected to evolve or be superseded as the project moves forward.
